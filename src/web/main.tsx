@@ -324,6 +324,22 @@ function App() {
           void load(Array.from(e.dataTransfer.files));
         }}
       >
+        {compact && (
+          <>
+            {!selected && <Brand version={root.dataset.desktopVersion} />}
+            <button
+              className="mobile-settings-trigger"
+              type="button"
+              aria-haspopup="dialog"
+              aria-controls="settings-panel"
+              aria-label={t("Open settings")}
+              onClick={openSettings}
+            >
+              <Icon name="settings" />
+              {t("Settings")}
+            </button>
+          </>
+        )}
         <div className="canvas-scroll">
           <input
             ref={picker}
@@ -466,22 +482,8 @@ function App() {
             {message}
           </div>
         </div>
-        {compact && (
-          <footer className="mobile-actions">
-            {!selected && <Brand version={root.dataset.desktopVersion} />}
-            <button
-              className="dock-settings"
-              type="button"
-              aria-haspopup="dialog"
-              aria-controls="settings-panel"
-              aria-label={t("Open settings")}
-              onClick={openSettings}
-            >
-              <Icon name="settings" />
-              {t("Settings")}
-            </button>
-            {selected && runActions}
-          </footer>
+        {compact && selected && (
+          <footer className="mobile-actions">{runActions}</footer>
         )}
       </main>
     </div>

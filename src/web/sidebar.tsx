@@ -57,7 +57,7 @@ export function Sidebar({
 
   function finishDrag(e: PointerEvent<HTMLElement>) {
     if (drag.current?.id !== e.pointerId) return;
-    const distance = e.clientY - drag.current.startY;
+    const distance = drag.current.startY - e.clientY;
     drag.current = null;
     const panel = panelRef.current!;
     panel.style.removeProperty("--sheet-offset");
@@ -80,29 +80,7 @@ export function Sidebar({
       }}
     >
       {compact ? (
-        <header
-          className="sheet-heading"
-          onPointerDown={(e) => {
-            if (
-              !e.isPrimary ||
-              e.button !== 0 ||
-              (e.target as Element).closest("button")
-            )
-              return;
-            drag.current = { id: e.pointerId, startY: e.clientY };
-            e.currentTarget.setPointerCapture(e.pointerId);
-          }}
-          onPointerMove={(e) => {
-            if (drag.current?.id === e.pointerId)
-              panelRef.current?.style.setProperty(
-                "--sheet-offset",
-                Math.max(0, e.clientY - drag.current.startY) + "px",
-              );
-          }}
-          onPointerUp={finishDrag}
-          onPointerCancel={finishDrag}
-          onLostPointerCapture={finishDrag}
-        >
+        <header className="sheet-heading">
           <h2>{t("Upscale settings")}</h2>
           <button
             type="button"
@@ -121,6 +99,27 @@ export function Sidebar({
         {navigation}
       </div>
       {compact && sheetAction}
+      {compact && (
+        <div
+          className="sheet-grip"
+          aria-hidden="true"
+          onPointerDown={(e) => {
+            if (!e.isPrimary || e.button !== 0) return;
+            drag.current = { id: e.pointerId, startY: e.clientY };
+            e.currentTarget.setPointerCapture(e.pointerId);
+          }}
+          onPointerMove={(e) => {
+            if (drag.current?.id === e.pointerId)
+              panelRef.current?.style.setProperty(
+                "--sheet-offset",
+                Math.min(0, e.clientY - drag.current.startY) + "px",
+              );
+          }}
+          onPointerUp={finishDrag}
+          onPointerCancel={finishDrag}
+          onLostPointerCapture={finishDrag}
+        />
+      )}
     </dialog>
   );
 }
