@@ -8,6 +8,11 @@ export const locale = selectLocale(
 document.documentElement.lang = locale;
 const korean = {
   Preview: "미리보기",
+  Settings: "설정",
+  "Open settings": "설정 열기",
+  "Close settings": "설정 닫기",
+  "View result fullscreen": "결과 전체화면으로 보기",
+  "Exit fullscreen": "전체화면 닫기",
   Slider: "슬라이더",
   Lens: "렌즈",
   "View at actual size": "실제 픽셀 크기로 보기",

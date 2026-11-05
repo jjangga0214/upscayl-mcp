@@ -11,6 +11,7 @@ const paths: Record<string, ReactNode> = {
     <path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
   ),
   expand: <path d="M14 4h6v6m0-6-7 7M10 20H4v-6m0 6 7-7" />,
+  fullscreen: <path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" />,
   chevron: <path d="m7 10 5 5 5-5" />,
   arrow: <path d="M5 19 19 5M7 5h12v12" />,
   download: <path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4" />,

@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@heroui/react/button";
 import { Icon } from "./icons";
+import { Sidebar } from "./sidebar";
 import { Settings } from "./settings";
 import { RunActions, type RunState } from "./run-actions";
 import { Preview } from "./preview";
@@ -194,239 +195,227 @@ function App() {
   );
   return (
     <div
-      className="app"
+      className="workspace"
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => e.preventDefault()}
     >
-      <header className="topbar">
-        <div className="brand">
-          <img width="56" height="56" src="/studio/icon-512.png" alt="" />
-          <div>
-            <h1>
-              Upscayl <small>{root.dataset.desktopVersion}</small>
-            </h1>
-            <p>AI Image Upscaler</p>
-          </div>
-        </div>
-        <nav>
-          <span className={"connection " + (connected ? "online" : "")}>
-            <i />
-            {connected === null
-              ? t("Connecting")
-              : connected
-                ? t("Connected")
-                : t("Offline")}
-          </span>
-          {install && (
-            <button
-              className="install"
-              onClick={async () => {
-                await install.prompt();
-                await install.userChoice;
-                setInstall(undefined);
-              }}
-            >
-              {t("Install app")}
-            </button>
-          )}
-          <a href="/setup">
-            {t("Setup")}
-            <Icon name="arrow" />
-          </a>
-        </nav>
-      </header>
-      <main className="workspace grid grid-cols-1 md:grid-cols-[minmax(235px,290px)_minmax(0,1fr)]">
-        <div
-          className="workarea md:col-start-2 md:row-start-1"
-          onDragOver={(e) => {
-            e.preventDefault();
-            if (!busy && e.dataTransfer.types.includes("Files")) setDrag(true);
-          }}
-          onDragLeave={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node | null))
-              setDrag(false);
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDrag(false);
-            void load(Array.from(e.dataTransfer.files));
-          }}
+      <Sidebar
+        version={root.dataset.desktopVersion}
+        ready={!!selected && !busy && runState.kind === "ready" && !!connected}
+        navigation={
+          <nav className="sidebar-nav">
+            <span className={"connection " + (connected ? "online" : "")}>
+              <i />
+              {connected === null
+                ? t("Connecting")
+                : connected
+                  ? t("Connected")
+                  : t("Offline")}
+            </span>
+            {install && (
+              <button
+                className="install"
+                onClick={async () => {
+                  await install.prompt();
+                  await install.userChoice;
+                  setInstall(undefined);
+                }}
+              >
+                {t("Install app")}
+              </button>
+            )}
+            <a href="/setup">
+              {t("Setup")}
+              <Icon name="arrow" />
+            </a>
+          </nav>
+        }
+      >
+        <Settings
+          models={models}
+          count={items.length}
+          batch={folder || items.length > 1}
+          busy={busy}
+          online={!!connected}
+          run={run}
         >
-          <input
-            ref={picker}
-            id="files"
-            type="file"
-            accept=".png,.jpg,.jpeg,.jfif,.webp"
-            multiple
-            hidden
-            onChange={(e) => {
-              void load(Array.from(e.target.files || []));
-              e.target.value = "";
-            }}
-          />
-          <input
-            ref={directory}
-            id="directory"
-            type="file"
-            {...{ webkitdirectory: "" }}
-            multiple
-            hidden
-            onChange={(e) => {
-              void load(Array.from(e.target.files || []), true);
-              e.target.value = "";
-            }}
-          />
-          {!selected ? (
-            <div className={"dropzone " + (drag ? "dragging" : "")}>
-              <div className="drop-content">
-                <svg
-                  className="drop-graphic"
-                  viewBox="0 0 76 76"
-                  fill="none"
-                  aria-hidden="true"
-                >
-                  <rect
-                    x="7"
-                    y="17"
-                    width="48"
-                    height="39"
-                    rx="7"
-                    transform="rotate(-12 7 17)"
-                    fill="#263a54"
-                    stroke="#567391"
-                    strokeWidth="1.6"
-                  />
-                  <rect
-                    x="18"
-                    y="23"
-                    width="47"
-                    height="37"
-                    rx="6"
-                    fill="#1e3049"
-                    stroke="#92b5df"
-                    strokeWidth="1.7"
-                  />
-                  <circle cx="31" cy="34" r="4" fill="#88add8" />
-                  <path
-                    d="m20 54 12-12 8 7 9-11 13 15"
-                    stroke="#89acd4"
-                    strokeWidth="2.4"
-                    strokeLinejoin="round"
-                  />
-                  <circle
-                    cx="61"
-                    cy="57"
-                    r="12"
-                    fill="#9fc9ff"
-                    stroke="#1a293c"
-                    strokeWidth="3"
-                  />
-                  <path
-                    d="M61 62V52m-4 4 4-4 4 4"
-                    stroke="#203654"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <h2>{drag ? t("Drop to open") : t("Drop images here")}</h2>
-                <p>
-                  PNG, JPG, WebP <span>·</span> {t("Up to 32 MiB per file")}
-                </p>
-                {fileButtons}
-              </div>
-            </div>
-          ) : (
-            <div className={"loaded " + (drag ? "dragging" : "")}>
-              <Preview
-                key={selected.url}
-                entry={selected}
-                showSave={runState.kind !== "done" || items.length > 1}
-              />
-              <div className="file-row">
-                {fileButtons}
-                <Button variant="ghost" isDisabled={busy} onPress={clear}>
-                  {t("Clear")}
-                </Button>
-              </div>
-              {items.length > 1 && (
-                <div className="batch">
-                  <label>
-                    {t("Files")}
-                    <select
-                      value={current}
-                      disabled={busy}
-                      onChange={(e) => setCurrent(+e.target.value)}
-                    >
-                      {items.map((f, i) => (
-                        <option key={f.url} value={i}>
-                          {i + 1}. {f.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {runState.kind !== "done" && (
-                    <Button
-                      variant="secondary"
-                      isDisabled={busy || !items.some((e) => e.result)}
-                      onPress={() => {
-                        void saveZip(items).catch((e) =>
-                          notify(String(e), true),
-                        );
-                      }}
-                    >
-                      {t("Save ZIP")}
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-          {connected === false && (
-            <div className="notice">
-              {t("Unable to reach the host. Check your network connection.")}{" "}
-              <button onClick={() => retry.current()}>{t("Reconnect")}</button>
-            </div>
-          )}
-          <div role="status" className={"status " + (error ? "error" : "")}>
-            {message}
-          </div>
-        </div>
-        <aside
-          aria-label={t("Upscale settings")}
-          className="sidebar md:col-start-1 md:row-start-1"
-        >
-          <Settings
-            models={models}
+          <RunActions
+            state={runState}
+            inputKey={items[0]?.url}
+            name={selected?.name}
             count={items.length}
-            batch={folder || items.length > 1}
-            busy={busy}
+            current={current}
             online={!!connected}
-            run={run}
-          >
-            <RunActions
-              state={runState}
-              inputKey={items[0]?.url}
-              name={selected?.name}
-              count={items.length}
-              current={current}
-              online={!!connected}
-              cancel={() => {
-                active.current?.abort();
-                setRunState((previous) =>
-                  previous.kind === "running"
-                    ? { ...previous, step: { stage: "cancel" } }
-                    : previous,
-                );
-              }}
-              download={() => {
-                if (items.length > 1)
-                  void saveZip(items).catch((e) => notify(String(e), true));
-                else if (selected?.result) save(selected.result);
-              }}
+            cancel={() => {
+              active.current?.abort();
+              setRunState((previous) =>
+                previous.kind === "running"
+                  ? { ...previous, step: { stage: "cancel" } }
+                  : previous,
+              );
+            }}
+            download={() => {
+              if (items.length > 1)
+                void saveZip(items).catch((e) => notify(String(e), true));
+              else if (selected?.result) save(selected.result);
+            }}
+          />
+        </Settings>
+      </Sidebar>
+      <main
+        className={"workarea" + (drag ? " dragging" : "")}
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (!busy && e.dataTransfer.types.includes("Files")) setDrag(true);
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null))
+            setDrag(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDrag(false);
+          void load(Array.from(e.dataTransfer.files));
+        }}
+      >
+        <input
+          ref={picker}
+          id="files"
+          type="file"
+          accept=".png,.jpg,.jpeg,.jfif,.webp"
+          multiple
+          hidden
+          onChange={(e) => {
+            void load(Array.from(e.target.files || []));
+            e.target.value = "";
+          }}
+        />
+        <input
+          ref={directory}
+          id="directory"
+          type="file"
+          {...{ webkitdirectory: "" }}
+          multiple
+          hidden
+          onChange={(e) => {
+            void load(Array.from(e.target.files || []), true);
+            e.target.value = "";
+          }}
+        />
+        {!selected ? (
+          <div className="dropzone">
+            <div className="drop-content">
+              <svg
+                className="drop-graphic"
+                viewBox="0 0 76 76"
+                fill="none"
+                aria-hidden="true"
+              >
+                <rect
+                  x="7"
+                  y="17"
+                  width="48"
+                  height="39"
+                  rx="7"
+                  transform="rotate(-12 7 17)"
+                  fill="#263a54"
+                  stroke="#567391"
+                  strokeWidth="1.6"
+                />
+                <rect
+                  x="18"
+                  y="23"
+                  width="47"
+                  height="37"
+                  rx="6"
+                  fill="#1e3049"
+                  stroke="#92b5df"
+                  strokeWidth="1.7"
+                />
+                <circle cx="31" cy="34" r="4" fill="#88add8" />
+                <path
+                  d="m20 54 12-12 8 7 9-11 13 15"
+                  stroke="#89acd4"
+                  strokeWidth="2.4"
+                  strokeLinejoin="round"
+                />
+                <circle
+                  cx="61"
+                  cy="57"
+                  r="12"
+                  fill="#9fc9ff"
+                  stroke="#1a293c"
+                  strokeWidth="3"
+                />
+                <path
+                  d="M61 62V52m-4 4 4-4 4 4"
+                  stroke="#203654"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <h2>{drag ? t("Drop to open") : t("Drop images here")}</h2>
+              <p>
+                PNG, JPG, WebP <span>·</span> {t("Up to 32 MiB per file")}
+              </p>
+              {fileButtons}
+            </div>
+          </div>
+        ) : (
+          <div className="loaded">
+            <Preview
+              key={selected.url}
+              entry={selected}
+              busy={busy}
+              showSave={runState.kind !== "done" || items.length > 1}
             />
-          </Settings>
-        </aside>
+            <div className="file-row">
+              {fileButtons}
+              <Button variant="ghost" isDisabled={busy} onPress={clear}>
+                {t("Clear")}
+              </Button>
+            </div>
+            {items.length > 1 && (
+              <div className="batch">
+                <label>
+                  {t("Files")}
+                  <select
+                    value={current}
+                    disabled={busy}
+                    onChange={(e) => setCurrent(+e.target.value)}
+                  >
+                    {items.map((f, i) => (
+                      <option key={f.url} value={i}>
+                        {i + 1}. {f.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {runState.kind !== "done" && (
+                  <Button
+                    variant="secondary"
+                    isDisabled={busy || !items.some((e) => e.result)}
+                    onPress={() => {
+                      void saveZip(items).catch((e) => notify(String(e), true));
+                    }}
+                  >
+                    {t("Save ZIP")}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        {connected === false && (
+          <div className="notice">
+            {t("Unable to reach the host. Check your network connection.")}{" "}
+            <button onClick={() => retry.current()}>{t("Reconnect")}</button>
+          </div>
+        )}
+        <div role="status" className={"status " + (error ? "error" : "")}>
+          {message}
+        </div>
       </main>
     </div>
   );

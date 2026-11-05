@@ -1,14 +1,85 @@
 import { t } from "./language";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@heroui/react/button";
 import { Icon } from "./icons";
 import { save, type Entry } from "./files";
+function FullscreenResult({ src, name }: { src: string; name: string }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const view = useRef<HTMLDivElement>(null);
+  const nativeRequested = useRef(false);
+  useEffect(() => {
+    const sync = () => {
+      if (
+        nativeRequested.current &&
+        document.fullscreenElement !== view.current
+      ) {
+        nativeRequested.current = false;
+        dialog.current?.close();
+      }
+    };
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
+  function open() {
+    dialog.current?.showModal();
+    // The modal also fills the viewport on browsers without element fullscreen.
+    if (
+      view.current &&
+      document.fullscreenEnabled &&
+      !document.fullscreenElement
+    ) {
+      nativeRequested.current = true;
+      void view.current.requestFullscreen().catch(() => {
+        nativeRequested.current = false;
+      });
+    }
+  }
+  return (
+    <>
+      <button
+        className="fullscreen-trigger"
+        type="button"
+        title={t("View result fullscreen")}
+        aria-label={t("View result fullscreen")}
+        onClick={open}
+      >
+        <Icon name="fullscreen" />
+      </button>
+      <dialog
+        className="result-dialog"
+        ref={dialog}
+        aria-label={t("Upscaled image")}
+        onClose={() => {
+          if (dialog.current?.open) return;
+          nativeRequested.current = false;
+          if (document.fullscreenElement === view.current && view.current)
+            void document.exitFullscreen().catch(() => {});
+        }}
+      >
+        <div className="fullscreen-result" ref={view}>
+          <img src={src} alt={name} loading="lazy" />
+          <button
+            type="button"
+            className="exit-fullscreen"
+            aria-label={t("Exit fullscreen")}
+            title={t("Exit fullscreen")}
+            onClick={() => dialog.current?.close()}
+          >
+            <Icon name="close" />
+          </button>
+        </div>
+      </dialog>
+    </>
+  );
+}
 export function Preview({
   entry,
   showSave,
+  busy,
 }: {
   entry: Entry;
   showSave: boolean;
+  busy: boolean;
 }) {
   const [lens, setLens] = useState(false),
     [actual, setActual] = useState(false),
@@ -16,9 +87,8 @@ export function Preview({
   const out = entry.result;
   return (
     <div className="preview">
-      <div className="toolbar">
-        <strong>{t("Preview")}</strong>
-        <div className="flex flex-wrap gap-1">
+      <div className="toolbar" role="group" aria-label={t("Preview")}>
+        <div className="preview-controls">
           {out && (
             <>
               <button aria-pressed={!lens} onClick={() => setLens(false)}>
@@ -36,6 +106,7 @@ export function Preview({
           >
             1:1
           </button>
+          {out && !busy && <FullscreenResult src={out.url} name={entry.name} />}
         </div>
       </div>
       <div className={"canvas " + (actual ? "actual" : "")}>
@@ -45,7 +116,7 @@ export function Preview({
             aspectRatio: entry.width + "/" + entry.height,
             width: actual
               ? (out || entry).width
-              : "min(100%, calc(var(--frame-h) * " +
+              : "min(100cqw, calc(100cqh * " +
                 entry.width / entry.height +
                 "))",
           }}
