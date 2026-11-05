@@ -1,3 +1,4 @@
+import { t } from "./language";
 import { useEffect, useState } from "react";
 import { Button } from "@heroui/react/button";
 import { Icon } from "./icons";
@@ -9,12 +10,12 @@ export type RunState =
   | { kind: "running"; step: ProcessingStep; started: number };
 
 const stages = {
-  upload: "이미지 전송 중",
-  prepare: "작업 준비 중",
-  queued: "GPU 대기 중",
-  process: "업스케일 중",
-  receive: "결과 받는 중",
-  cancel: "취소 중",
+  upload: t("Sending image"),
+  prepare: t("Preparing job"),
+  queued: t("Waiting for GPU"),
+  process: t("Upscaling"),
+  receive: t("Receiving result"),
+  cancel: t("Cancelling"),
 };
 
 function Elapsed({ since }: { since: number }) {
@@ -28,7 +29,8 @@ function Elapsed({ since }: { since: number }) {
   }, [since]);
   return (
     <span>
-      경과 {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}
+      {t("Elapsed")} {Math.floor(seconds / 60)}:
+      {String(seconds % 60).padStart(2, "0")}
     </span>
   );
 }
@@ -61,7 +63,9 @@ export function RunActions({
   const batch = count > 1;
   const phase = step ? stages[step.stage] : "";
   const passLabel =
-    pass && pass.total > 1 ? pass.index + "/" + pass.total + "차 처리" : "";
+    pass && pass.total > 1
+      ? t("Pass {index} of {total}", { index: pass.index, total: pass.total })
+      : "";
   return (
     <div className={"run-area" + (count ? " has-input" : "")}>
       {processing && step ? (
@@ -74,15 +78,18 @@ export function RunActions({
               type="button"
               isDisabled={step.stage === "cancel"}
               onPress={cancel}
-              aria-label="작업 취소"
+              aria-label={t("Cancel job")}
             >
-              취소
+              {t("Cancel")}
             </Button>
           </div>
           <div className="run-file" title={name}>
             {batch && (
               <b>
-                {current + 1}/{count}장
+                {t("{current} of {total} images", {
+                  current: current + 1,
+                  total: count,
+                })}
               </b>
             )}
             <span>{name}</span>
@@ -115,25 +122,30 @@ export function RunActions({
           {state.kind === "done" && (
             <div className="run-note success">
               <Icon name="check" />
-              <strong>업스케일 완료</strong>
+              <strong>{t("Upscale complete")}</strong>
               {batch && (
                 <span>
-                  {count}/{count}장
+                  {t("{current} of {total} images", {
+                    current: count,
+                    total: count,
+                  })}
                 </span>
               )}
             </div>
           )}
           {state.kind === "cancelled" && (
-            <div className="run-note">작업을 취소했습니다.</div>
+            <div className="run-note">{t("Job cancelled.")}</div>
           )}
           {state.kind === "failed" && (
-            <div className="run-note error">업스케일 실패 · {state.reason}</div>
+            <div className="run-note error">
+              {t("Upscale failed")} · {state.reason}
+            </div>
           )}
           <div className={state.kind === "done" ? "result-actions" : ""}>
             {state.kind === "done" && (
               <Button type="button" onPress={download}>
                 <Icon name="download" />
-                {batch ? "ZIP 저장" : "결과 저장"}
+                {batch ? t("Save ZIP") : t("Save result")}
               </Button>
             )}
             <div className="run-trigger">
@@ -145,11 +157,13 @@ export function RunActions({
                 isDisabled={!count || !online}
               >
                 {state.kind === "done" ? (
-                  "다시 업스케일"
+                  t("Upscale again")
                 ) : (
                   <>
                     <Icon name="expand" />
-                    {batch ? count + "장 업스케일" : "업스케일"}
+                    {batch
+                      ? t("Upscale {count} images", { count })
+                      : t("Upscale")}
                   </>
                 )}
               </Button>
@@ -162,13 +176,18 @@ export function RunActions({
               )}
             </div>
           </div>
-          <p>서버의 작업 파일은 완료 5분 후 삭제됩니다.</p>
+          <p>{t("Server files expire five minutes after completion.")}</p>
         </>
       )}
       <span className="sr-only" role="status" aria-atomic="true">
         {processing
           ? [
-              batch ? current + 1 + "/" + count + "장" : "",
+              batch
+                ? t("{current} of {total} images", {
+                    current: current + 1,
+                    total: count,
+                  })
+                : "",
               name,
               phase,
               passLabel,
@@ -176,11 +195,11 @@ export function RunActions({
               .filter(Boolean)
               .join(", ")
           : state.kind === "done"
-            ? "업스케일 완료. 결과를 저장할 수 있습니다."
+            ? t("Upscale complete. Your result is ready to save.")
             : state.kind === "failed"
-              ? "업스케일 실패. " + state.reason
+              ? t("Upscale failed") + ". " + state.reason
               : state.kind === "cancelled"
-                ? "작업을 취소했습니다."
+                ? t("Job cancelled.")
                 : ""}
       </span>
     </div>

@@ -14,6 +14,7 @@ import { privateIPv4 } from "./network";
 import { version } from "../package.json";
 import { z } from "zod";
 
+import { selectLocale } from "./locale";
 const requestSettings = z
   .object({ file_id: z.string().uuid(), options: optionsSchema.optional() })
   .strict();
@@ -29,7 +30,7 @@ export async function serve(host: string, port: number) {
     listenPort: number,
     tls?: { cert: Buffer; key: Buffer },
   ) => {
-    const info = manifest(base);
+    const manifests = { en: manifest(base, "en"), ko: manifest(base, "ko") };
     return Bun.serve({
       hostname: host,
       port: listenPort,
@@ -48,6 +49,12 @@ export async function serve(host: string, port: number) {
         )
           return text("Unrecognized LAN address, Host or Origin.", 403);
         const p = url.pathname;
+        const locale = selectLocale(req.headers.get("accept-language"));
+        const info = manifests[locale];
+        const languageHeaders = {
+          "Content-Language": locale,
+          Vary: "Accept-Language",
+        };
         try {
           if (Date.now() >= jobs.nextExpiry) await jobs.expire();
           if (p === "/mcp") {
@@ -56,42 +63,44 @@ export async function serve(host: string, port: number) {
                 status: 405,
                 headers: { Allow: "POST" },
               });
-            return await handleMcp(req, jobs);
+            return await handleMcp(req, jobs, locale);
           }
           if (req.method === "GET" || req.method === "HEAD") {
             if (p === "/" || p === "/llms.txt") {
               const format =
                 p === "/llms.txt" ? "markdown" : rootFormat(req.headers);
               const headers = {
-                Vary: "Accept, Sec-Fetch-Mode, Sec-Fetch-Dest, User-Agent",
+                ...languageHeaders,
+                Vary: "Accept, Sec-Fetch-Mode, Sec-Fetch-Dest, User-Agent, Accept-Language",
                 Link: discoveryLinks,
                 "Cache-Control": "no-cache",
               };
               if (format === "json") return Response.json(info, { headers });
               if (format === "markdown")
-                return new Response(agentGuide(info), {
+                return new Response(agentGuide(info, locale), {
                   headers: {
                     ...headers,
                     "Content-Type": "text/markdown; charset=utf-8",
                   },
                 });
               if (format === "guideHtml")
-                return new Response(home(info, secure), {
+                return new Response(home(info, secure, locale), {
                   headers: {
                     ...headers,
                     "Content-Type": "text/html; charset=utf-8",
                   },
                 });
-              const app = studio("/", assets)!;
+              const app = studio("/", assets, locale)!;
               app.headers.set("Vary", headers.Vary);
               return app;
             }
-            const page = studio(p, assets);
+            const page = studio(p, assets, locale);
             if (page) return page;
             if (p === "/setup")
-              return new Response(home(info, secure), {
+              return new Response(home(info, secure, locale), {
                 headers: {
                   "Content-Type": "text/html; charset=utf-8",
+                  ...languageHeaders,
                   Link: discoveryLinks,
                 },
               });
@@ -103,7 +112,8 @@ export async function serve(host: string, port: number) {
                     'attachment; filename="upscayl-lan-ca.cer"',
                 },
               });
-            if (p === "/manifest.json") return Response.json(info);
+            if (p === "/manifest.json")
+              return Response.json(info, { headers: languageHeaders });
             if (p === "/health")
               return Response.json({
                 name: info.name,
@@ -125,9 +135,10 @@ export async function serve(host: string, port: number) {
                   .map((id) => ({
                     id,
                     nativeScale: jobs.backend.models.get(id)!.nativeScale,
-                    ...describeModel(id),
+                    ...describeModel(id, locale),
                     preview: assets.previews.includes(id),
                   })),
+                { headers: languageHeaders },
               );
             if (p.startsWith("/downloads/")) return download(p.slice(11));
           }
@@ -199,8 +210,9 @@ export async function serve(host: string, port: number) {
               action === "compare" &&
               job.status === "done"
             )
-              return new Response(comparison("original", "result"), {
+              return new Response(comparison("original", "result", locale), {
                 headers: {
+                  ...languageHeaders,
                   "Content-Type": "text/html; charset=utf-8",
                   "Cache-Control": "no-store",
                 },

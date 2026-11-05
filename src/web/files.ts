@@ -1,3 +1,4 @@
+import { t } from "./language";
 import { zipSync } from "fflate";
 import type { Options } from "../engine";
 
@@ -16,7 +17,7 @@ async function response(path: string, init?: RequestInit) {
   if (!res.ok)
     throw Error(
       (await res.json().catch(() => ({}))).error ??
-        "서버 요청 실패 (" + res.status + ")",
+        t("Server request failed") + " (" + res.status + ")",
     );
   return res;
 }
@@ -32,9 +33,9 @@ export async function readFiles(files: File[], folder: boolean) {
         !f.webkitRelativePath ||
         f.webkitRelativePath.split("/").length === 2),
   );
-  if (!supported.length) throw Error("PNG, JPG 또는 WebP 이미지를 선택하세요.");
+  if (!supported.length) throw Error(t("Choose a PNG, JPG or WebP image."));
   if (supported.some((f) => f.size > 32 * 1024 * 1024))
-    throw Error("이미지 한 장의 최대 크기는 32 MiB입니다.");
+    throw Error(t("The maximum file size is 32 MiB per image."));
   const entries: Entry[] = [];
   try {
     for (const file of supported) {
@@ -120,7 +121,8 @@ export async function processImage(
     await new Promise((resolve) => setTimeout(resolve, 320));
     job = await request<Job>("/jobs/" + job.job_id, { signal });
   }
-  if (job.status !== "done") throw Error(job.error || "작업이 중단되었습니다.");
+  if (job.status !== "done")
+    throw Error(job.error || t("The job was interrupted."));
   progress({ stage: "receive" });
   const blob = await (await response(job.result, { signal })).blob();
   signal.throwIfAborted();

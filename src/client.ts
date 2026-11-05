@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { inspect, plan, publishFile, type Options } from "./engine";
+import { terminalLocale } from "./terminal-locale";
 
 export function endpoint(value: string) {
   const url = new URL(value.includes("://") ? value : "http://" + value);
@@ -22,7 +23,11 @@ async function checked(url: string, init?: RequestInit) {
   return r;
 }
 export async function remoteModels(base: string) {
-  return (await checked(base + "/models")).json();
+  return (
+    await checked(base + "/models", {
+      headers: { "Accept-Language": terminalLocale() },
+    })
+  ).json();
 }
 export async function remoteFile(
   base: string,

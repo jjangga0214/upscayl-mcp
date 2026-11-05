@@ -5,6 +5,8 @@ description: Use the local Upscayl engine or operate the Upscayl LAN service on 
 
 # Upscayl host
 
+Use English for user-facing replies by default. Use Korean when the user writes in Korean or has an explicit Korean language preference. Follow an explicit request for a response language. Keep commands, file paths and model IDs verbatim.
+
 For an image on the host Mac, run `upscayl-mcp upscale "photo.png"` directly with the installed desktop engine. Local processing works while the LAN service is stopped.
 
 - For models, files, folders, output paths and local comparison, read [local CLI](references/cli.md).

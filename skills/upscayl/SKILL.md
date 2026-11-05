@@ -5,6 +5,8 @@ description: Upscale images on this device using a remote Upscayl MCP server on 
 
 # Upscayl client
 
+Use English for user-facing replies by default. Use Korean when the user writes in Korean or has an explicit Korean language preference. Follow an explicit request for a response language. Keep commands, file paths and model IDs verbatim.
+
 Use the connected Upscayl MCP server. If the user supplies an IP and port, read its `/manifest.json` for the MCP endpoint and client setup. The requesting device owns the source and the saved result.
 
 - For first-time connection, uploads, jobs and downloads, read [MCP workflow](references/mcp.md). Save the result on this device within five minutes of completion.

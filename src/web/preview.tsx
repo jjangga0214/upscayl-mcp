@@ -1,3 +1,4 @@
+import { t } from "./language";
 import { useState } from "react";
 import { Button } from "@heroui/react/button";
 import { Icon } from "./icons";
@@ -16,22 +17,22 @@ export function Preview({
   return (
     <div className="preview">
       <div className="toolbar">
-        <strong>미리보기</strong>
+        <strong>{t("Preview")}</strong>
         <div className="flex flex-wrap gap-1">
           {out && (
             <>
               <button aria-pressed={!lens} onClick={() => setLens(false)}>
-                슬라이더
+                {t("Slider")}
               </button>
               <button aria-pressed={lens} onClick={() => setLens(true)}>
-                렌즈
+                {t("Lens")}
               </button>
             </>
           )}
           <button
             onClick={() => setActual(!actual)}
             aria-pressed={actual}
-            aria-label="실제 픽셀 크기로 보기"
+            aria-label={t("View at actual size")}
           >
             1:1
           </button>
@@ -60,13 +61,13 @@ export function Preview({
             );
           }}
         >
-          <img src={entry.url} alt="원본 이미지" draggable={false} />
+          <img src={entry.url} alt={t("Original image")} draggable={false} />
           {out && (
             <>
               <img
                 className="overlay"
                 src={out.url}
-                alt="업스케일 결과"
+                alt={t("Upscaled image")}
                 draggable={false}
                 style={{
                   clipPath: lens
@@ -74,15 +75,15 @@ export function Preview({
                     : "inset(0 0 0 " + split + "%)",
                 }}
               />
-              <span className="image-label">원본</span>
-              <span className="image-label after">결과</span>
+              <span className="image-label">{t("Original")}</span>
+              <span className="image-label after">{t("Result")}</span>
               {!lens && (
                 <>
                   <div className="handle" style={{ left: split + "%" }}>
                     <span>‹ ›</span>
                   </div>
                   <input
-                    aria-label="원본과 결과 비교 위치"
+                    aria-label={t("Before/after split position")}
                     className="wipe"
                     type="range"
                     min="0"
@@ -113,7 +114,7 @@ export function Preview({
         {out && showSave && (
           <Button variant="secondary" onPress={() => save(out)}>
             <Icon name="download" />
-            결과 저장
+            {t("Save result")}
           </Button>
         )}
       </div>

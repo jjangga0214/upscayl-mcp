@@ -45,9 +45,10 @@ export const skillBundles = {
   }),
 };
 
-// Exact contents distributed in the combined skill from v0.1.0 through v0.3.1.
+// Exact earlier official file contents accepted for in-place upgrades.
 const previousClient: Record<string, string[]> = {
   "SKILL.md": [
+    "8b7c4897f98d3e70a7d934c298966890678c4839a51d3ef1f4329ae929125768",
     "ec14805f1b8ff3fed81f149023193ef64b91802ac208693759dc9f2dc8cdfd18",
     "9a57eb39fb761697d7009354f363aa0dac72ea4855ac0f87bf91ac204e036f12",
   ],
@@ -63,6 +64,11 @@ const previousClient: Record<string, string[]> = {
   ],
 };
 
+const previousHost: Record<string, string[]> = {
+  "SKILL.md": [
+    "6fda146fc3d19551b16a3e13c10c59756def7f5a69174b61c9ccb1c45ec9d0ba",
+  ],
+};
 export async function installSkill(
   role: keyof typeof skillBundles,
   root = join(homedir(), ".agents/skills"),
@@ -89,10 +95,8 @@ export async function installSkill(
         throw Error("Review the existing skill file " + path);
       const existing = await readFile(path);
       if (existing.equals(Buffer.from(content))) continue;
-      if (
-        role !== "client" ||
-        !previousClient[name]?.includes(sha256(existing))
-      )
+      const previous = role === "client" ? previousClient : previousHost;
+      if (!previous[name]?.includes(sha256(existing)))
         throw Error(
           "Skill file has different content. Review it before replacing: " +
             path,

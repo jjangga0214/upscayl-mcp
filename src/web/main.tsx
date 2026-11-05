@@ -1,3 +1,4 @@
+import { t } from "./language";
 import { createRoot } from "react-dom/client";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@heroui/react/button";
@@ -109,7 +110,10 @@ function App() {
       notify("");
     } catch (e) {
       if (seq === ticket.current)
-        notify("이미지를 열 수 없습니다. " + (e as Error).message, true);
+        notify(
+          t("Could not open the image.") + " " + (e as Error).message,
+          true,
+        );
     }
   }
   function clear() {
@@ -176,7 +180,7 @@ function App() {
         onPress={() => picker.current?.click()}
       >
         <Icon name="photo" />
-        {selected ? "이미지 변경" : "이미지 선택"}
+        {selected ? t("Change image") : t("Select image")}
       </Button>
       <Button
         variant="secondary"
@@ -184,7 +188,7 @@ function App() {
         onPress={() => directory.current?.click()}
       >
         <Icon name="folder" />
-        폴더 열기
+        {t("Open folder")}
       </Button>
     </div>
   );
@@ -208,10 +212,10 @@ function App() {
           <span className={"connection " + (connected ? "online" : "")}>
             <i />
             {connected === null
-              ? "연결 중"
+              ? t("Connecting")
               : connected
-                ? "서버 연결됨"
-                : "오프라인"}
+                ? t("Connected")
+                : t("Offline")}
           </span>
           {install && (
             <button
@@ -222,11 +226,11 @@ function App() {
                 setInstall(undefined);
               }}
             >
-              앱 설치
+              {t("Install app")}
             </button>
           )}
           <a href="/setup">
-            연결 및 설치
+            {t("Setup")}
             <Icon name="arrow" />
           </a>
         </nav>
@@ -325,9 +329,9 @@ function App() {
                     strokeLinejoin="round"
                   />
                 </svg>
-                <h2>{drag ? "놓아서 열기" : "이미지를 여기에 놓으세요"}</h2>
+                <h2>{drag ? t("Drop to open") : t("Drop images here")}</h2>
                 <p>
-                  PNG, JPG, WebP <span>·</span> 파일당 최대 32 MiB
+                  PNG, JPG, WebP <span>·</span> {t("Up to 32 MiB per file")}
                 </p>
                 {fileButtons}
               </div>
@@ -342,13 +346,13 @@ function App() {
               <div className="file-row">
                 {fileButtons}
                 <Button variant="ghost" isDisabled={busy} onPress={clear}>
-                  비우기
+                  {t("Clear")}
                 </Button>
               </div>
               {items.length > 1 && (
                 <div className="batch">
                   <label>
-                    파일 목록
+                    {t("Files")}
                     <select
                       value={current}
                       disabled={busy}
@@ -371,7 +375,7 @@ function App() {
                         );
                       }}
                     >
-                      ZIP 저장
+                      {t("Save ZIP")}
                     </Button>
                   )}
                 </div>
@@ -380,8 +384,8 @@ function App() {
           )}
           {connected === false && (
             <div className="notice">
-              호스트에 연결할 수 없습니다. 같은 네트워크에서{" "}
-              <button onClick={() => retry.current()}>다시 연결</button>하세요.
+              {t("Unable to reach the host. Check your network connection.")}{" "}
+              <button onClick={() => retry.current()}>{t("Reconnect")}</button>
             </div>
           )}
           <div role="status" className={"status " + (error ? "error" : "")}>
@@ -389,7 +393,7 @@ function App() {
           </div>
         </div>
         <aside
-          aria-label="업스케일 설정"
+          aria-label={t("Upscale settings")}
           className="sidebar md:col-start-1 md:row-start-1"
         >
           <Settings

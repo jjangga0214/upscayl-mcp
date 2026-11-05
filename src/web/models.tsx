@@ -1,3 +1,4 @@
+import { locale, t } from "./language";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@heroui/react/button";
 import { Icon } from "./icons";
@@ -12,9 +13,13 @@ function Pair({ model, large = false }: { model: Model; large?: boolean }) {
           <img
             loading="lazy"
             src={"/studio/models/" + model.id + "/" + side + ".webp"}
-            alt={describeModel(model.id).name + (i ? " 처리 후" : " 처리 전")}
+            alt={
+              describeModel(model.id, locale).name +
+              " · " +
+              (i ? t("After") : t("Before"))
+            }
           />
-          <span>{i ? "처리 후" : "처리 전"}</span>
+          <span>{i ? t("After") : t("Before")}</span>
         </div>
       ))}
     </div>
@@ -43,7 +48,7 @@ export function ModelPicker({
   }, [large]);
   return (
     <section>
-      <h2>AI 모델</h2>
+      <h2>{t("AI model")}</h2>
       <Button
         id="model"
         variant="secondary"
@@ -52,10 +57,10 @@ export function ModelPicker({
         onPress={() => setOpen(true)}
         aria-haspopup="dialog"
       >
-        <span>{describeModel(value).name}</span>
+        <span>{describeModel(value, locale).name}</span>
         <Icon name="chevron" />
       </Button>
-      <p className="hint">{describeModel(value).description}</p>
+      <p className="hint">{describeModel(value, locale).description}</p>
       {open && (
         <dialog
           className="model-dialog"
@@ -68,11 +73,11 @@ export function ModelPicker({
         >
           <div className="dialog-body">
             <header>
-              <h2 id="model-title">AI 모델 선택</h2>
+              <h2 id="model-title">{t("Select an AI model")}</h2>
               <Button
                 isIconOnly
                 variant="ghost"
-                aria-label="모델 선택 닫기"
+                aria-label={t("Close model picker")}
                 onPress={() => dialog.current?.close()}
               >
                 <Icon name="close" />
@@ -80,7 +85,7 @@ export function ModelPicker({
             </header>
             <div className="model-list">
               {models.map((m) => {
-                const info = describeModel(m.id);
+                const info = describeModel(m.id, locale);
                 return (
                   <article
                     className={"model-card " + (m.id === value ? "chosen" : "")}
@@ -104,7 +109,9 @@ export function ModelPicker({
                         variant="primary"
                         isIconOnly
                         className="zoom-model"
-                        aria-label={info.name + " 비교 사진 크게 보기"}
+                        aria-label={t("Enlarge {model} comparison", {
+                          model: info.name,
+                        })}
                         onPress={() => setLarge(m)}
                       >
                         <Icon name="expand" />
@@ -122,14 +129,16 @@ export function ModelPicker({
           className="zoom-dialog"
           ref={zoom}
           onClose={() => setLarge(undefined)}
-          aria-label={describeModel(large.id).name + " 비교 사진"}
+          aria-label={t("{model} comparison", {
+            model: describeModel(large.id, locale).name,
+          })}
         >
           <header>
             <h2>{describeModel(large.id).name}</h2>
             <Button
               isIconOnly
               variant="secondary"
-              aria-label="큰 사진 닫기"
+              aria-label={t("Close enlarged comparison")}
               onPress={() => zoom.current?.close()}
             >
               <Icon name="close" />

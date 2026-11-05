@@ -1,5 +1,6 @@
 import type { manifest } from "./assets";
 
+import { localized, type Locale } from "./locale";
 type Format = "html" | "markdown" | "json" | "guideHtml";
 export function rootFormat(h: Headers): Format {
   const agent =
@@ -30,26 +31,42 @@ export function rootFormat(h: Headers): Format {
     return "html";
   return "markdown";
 }
-export function agentGuide(m: ReturnType<typeof manifest>) {
+export function agentGuide(
+  m: ReturnType<typeof manifest>,
+  locale: Locale = "en",
+) {
+  const t = localized(locale);
   return [
-    "# Upscayl on this home LAN",
+    t("# Upscayl on this home LAN", "# 홈 네트워크의 Upscayl"),
     "",
     m.instructions,
     "",
-    "## Connect",
+    t("## Connect", "## 연결"),
     "Streamable HTTP MCP: " + m.mcp,
     "Codex: `" + m.codex + "`",
-    "OpenCode: merge this JSON with your configuration:",
+    t(
+      "OpenCode: merge this JSON with your configuration:",
+      "OpenCode 설정에 다음 JSON을 병합하세요.",
+    ),
     "```json",
     JSON.stringify(m.opencode, null, 2),
     "```",
     "",
-    "## Client skill (Codex and OpenCode)",
-    "Skill ZIP: " + m.skills.client.url,
-    "Skill SHA-256: " + m.skills.client.sha256,
+    t(
+      "## Client skill (Codex and OpenCode)",
+      "## 클라이언트 스킬 (Codex 및 OpenCode)",
+    ),
+    t("Skill ZIP: ", "스킬 ZIP: ") + m.skills.client.url,
+    t("Skill SHA-256: ", "스킬 SHA-256: ") + m.skills.client.sha256,
     "",
-    "## Optional remote CLI for shell workflows",
-    "Example: upscayl-mcp upscale photo.png --server " +
+    t(
+      "## Optional remote CLI for shell workflows",
+      "## 터미널용 원격 CLI (선택)",
+    ),
+    t(
+      "Example: upscayl-mcp upscale photo.png --server ",
+      "사용 예: upscayl-mcp upscale photo.png --server ",
+    ) +
       new URL(m.mcp).origin +
       " --output result.png",
     ...Object.entries(m.downloads).map(
@@ -57,9 +74,9 @@ export function agentGuide(m: ReturnType<typeof manifest>) {
     ),
     "SHA256SUMS: " + m.checksums,
     "",
-    "Machine-readable manifest: " + m.manifest,
-    "Browser app: " + m.app.replace(/\/$/, "") + "/app",
-    "Repository: " + m.repository,
+    t("Machine-readable manifest: ", "설정 JSON: ") + m.manifest,
+    t("Browser app: ", "웹 앱: ") + m.app.replace(/\/$/, "") + "/app",
+    t("Repository: ", "저장소: ") + m.repository,
     "",
   ].join("\n");
 }

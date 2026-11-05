@@ -98,7 +98,29 @@ test.skipIf(!ready)(
       const standard = catalog.find(
         (m: { id: string }) => m.id === "upscayl-standard-4x",
       );
-      expect(standard.description).toContain("대부분");
+      expect(standard.description).toBe("Suitable for most images.");
+      const ko = { headers: { "Accept-Language": "ko-KR, en;q=0.6" } };
+      const koreanModels = await (await fetch(base + "/models", ko)).json();
+      expect(
+        koreanModels.find((m: { id: string }) => m.id === standard.id)
+          .description,
+      ).toContain("대부분");
+      for (const [path, english, korean] of [
+        ["/app", 'lang="en"', 'lang="ko"'],
+        ["/setup", "Connect an agent", "에이전트 연결"],
+        ["/llms.txt", "## Connect", "## 연결"],
+        ["/app.webmanifest", '"lang":"en"', '"lang":"ko"'],
+      ]) {
+        const fallback = await fetch(base + path, {
+          headers: { "Accept-Language": "fr-FR" },
+        });
+        expect(fallback.headers.get("Content-Language")).toBe("en");
+        expect(await fallback.text()).toContain(english);
+        const translated = await fetch(base + path, ko);
+        expect(translated.headers.get("Vary")).toContain("Accept-Language");
+        expect(translated.headers.get("Content-Language")).toBe("ko");
+        expect(await translated.text()).toContain(korean);
+      }
       if (standard.preview)
         for (const side of ["before", "after"])
           expect(

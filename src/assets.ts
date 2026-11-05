@@ -3,6 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import { version } from "../package.json";
 import { CACHE_MS } from "./jobs";
 import { skillBundles } from "./skills";
+import type { Locale } from "./locale";
 
 export const repo = "https://github.com/jjangga0214/upscayl-mcp";
 export const platforms = [
@@ -35,7 +36,7 @@ export function download(name: string) {
     302,
   );
 }
-export function manifest(base: string) {
+export function manifest(base: string, locale: Locale = "en") {
   const link = (bundle: typeof skillBundles.client) => ({
     name: bundle.name,
     url: base + "/downloads/" + bundle.filename,
@@ -76,6 +77,8 @@ export function manifest(base: string) {
       },
     },
     instructions:
-      "For a client PC, use skills.client (also exposed as skill). Verify its SHA-256 and extract the upscayl folder into ~/.agents/skills. Connect this MCP endpoint in Codex or OpenCode. POST image bytes to /files, call upscale with file_id and options, poll get_job, and save the result on the requesting device within five minutes of completion. The remote CLI is optional for shell use.",
+      locale === "ko"
+        ? "클라이언트 PC에는 skills.client(또는 skill)의 ZIP을 사용하세요. SHA-256을 확인한 뒤 upscayl 폴더를 ~/.agents/skills에 풉니다. Codex나 OpenCode에서 MCP를 연결하고 /files로 이미지를 전송하세요. 받은 file_id와 설정으로 upscale을 호출하고 get_job으로 확인한 뒤 완료 후 5분 이내에 결과를 이 기기에 저장하세요. 터미널에서는 원격 CLI도 쓸 수 있습니다."
+        : "For a client PC, use skills.client (also exposed as skill). Verify its SHA-256 and extract the upscayl folder into ~/.agents/skills. Connect this MCP endpoint in Codex or OpenCode. POST image bytes to /files, call upscale with file_id and options, poll get_job, and save the result on the requesting device within five minutes of completion. The remote CLI is optional for shell use.",
   };
 }

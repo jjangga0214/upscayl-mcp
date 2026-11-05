@@ -1,3 +1,4 @@
+import { t } from "./language";
 import { useState, type ReactNode } from "react";
 import { Icon } from "./icons";
 import { ModelPicker, type Model } from "./models";
@@ -92,14 +93,14 @@ export function Settings({
           change={setModel}
         />
         <section>
-          <h2>출력 크기</h2>
+          <h2>{t("Output size")}</h2>
           <Choices
-            label="출력 배율"
+            label={t("Output scale")}
             list={[
               ["2", "2×"],
               ["4", "4×"],
               ["8", "8×"],
-              ["custom", "직접 지정"],
+              ["custom", t("Custom")],
             ]}
             value={scale}
             change={setScale}
@@ -107,17 +108,17 @@ export function Settings({
           {scale === "custom" && (
             <div className="form-row mt-3">
               <label>
-                기준
+                {t("Size by")}
                 <select
                   value={units}
                   onChange={(e) => setUnits(e.target.value)}
                 >
-                  <option value="scale">배율</option>
-                  <option value="width">가로 너비</option>
+                  <option value="scale">{t("Scale")}</option>
+                  <option value="width">{t("Width")}</option>
                 </select>
               </label>
               <label>
-                {units === "width" ? "가로 (px)" : "배율"}
+                {units === "width" ? t("Width (px)") : t("Scale")}
                 <input
                   key={units}
                   name="custom"
@@ -142,9 +143,9 @@ export function Settings({
           </label>
         </section>
         <section>
-          <h2>저장 형식</h2>
+          <h2>{t("Output format")}</h2>
           <Choices
-            label="저장 형식"
+            label={t("Output format")}
             value={format}
             change={setFormat}
             list={[
@@ -157,13 +158,13 @@ export function Settings({
         <details>
           <summary>
             <Icon name="settings" />
-            고급 설정
+            {t("Advanced settings")}
             <Icon name="chevron" />
           </summary>
           <div className="advanced">
             <div className="form-row">
               <label>
-                압축 (0–100)
+                {t("Compression (0–100)")}
                 <input
                   type="number"
                   name="compression"
@@ -174,7 +175,7 @@ export function Settings({
                 />
               </label>
               <label>
-                타일 크기
+                {t("Tile size")}
                 <input
                   type="number"
                   name="tile"
@@ -186,7 +187,7 @@ export function Settings({
                     const n = e.target.valueAsNumber;
                     e.target.setCustomValidity(
                       n > 0 && n < 32
-                        ? "자동(0) 또는 32 이상을 입력하세요."
+                        ? t("Enter 0 for automatic or at least 32.")
                         : "",
                     );
                   }}
@@ -195,10 +196,14 @@ export function Settings({
             </div>
             <label>
               GPU ID
-              <input name="gpu" placeholder="자동" pattern="[0-9]+(,[0-9]+)*" />
+              <input
+                name="gpu"
+                placeholder={t("Auto")}
+                pattern="[0-9]+(,[0-9]+)*"
+              />
             </label>
             <label className="switchrow">
-              <span>TTA 모드</span>
+              <span>{t("TTA mode")}</span>
               <input name="tta" type="checkbox" role="switch" />
             </label>
           </div>

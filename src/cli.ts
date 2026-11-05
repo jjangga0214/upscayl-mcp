@@ -14,6 +14,7 @@ import {
   selectModel,
   upscale,
 } from "./engine";
+import { terminalLocale } from "./terminal-locale";
 import { describeModel } from "./catalog";
 import { endpoint, remoteFile, remoteModels } from "./client";
 import { installSkill } from "./skills";
@@ -213,7 +214,7 @@ const cli = defineCommand({
             : [...engine().models.values()].map(({ id, nativeScale }) => ({
                 id,
                 nativeScale,
-                ...describeModel(id),
+                ...describeModel(id, terminalLocale()),
               })),
         );
       },

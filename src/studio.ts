@@ -1,21 +1,20 @@
 import html from "./web/studio.html" with { type: "text" };
 import css from "../build/web/studio.css" with { type: "file" };
 import javascript from "../build/web/main.js" with { type: "file" };
-import worker from "./web/sw.js" with { type: "text" };
+import worker from "../build/web/sw.js" with { type: "text" };
 import zip from "../node_modules/fflate/esm/browser.js" with { type: "text" };
 import sample from "./web/rainier.jpg" with { type: "file" };
 import sampleResult from "./web/rainier-4x.png" with { type: "file" };
 import { version } from "../package.json";
 import type { desktopAssets } from "./desktop-assets";
 
+import { localized, type Locale } from "./locale";
 const appManifest = {
   id: "/app",
   start_url: "/app",
   scope: "/",
   name: "Upscayl",
   short_name: "Upscayl",
-  description: "홈 서버에서 사진과 일러스트를 업스케일합니다.",
-  lang: "ko",
   display: "standalone",
   theme_color: "#1d293b",
   background_color: "#101827",
@@ -28,7 +27,16 @@ const appManifest = {
 };
 export const discoveryLinks =
   '</manifest.json>; rel="describedby"; type="application/json", </llms.txt>; rel="alternate"; type="text/markdown", </app>; rel="alternate"; type="text/html"';
-export function studio(path: string, assets: ReturnType<typeof desktopAssets>) {
+export function studio(
+  path: string,
+  assets: ReturnType<typeof desktopAssets>,
+  locale: Locale,
+) {
+  const t = localized(locale);
+  const languageHeaders = {
+    "Content-Language": locale,
+    Vary: "Accept-Language",
+  };
   const headers = { "Cache-Control": "no-cache" };
   const serve = (body: BodyInit, type: string) =>
     new Response(body, { headers: { ...headers, "Content-Type": type } });
@@ -38,14 +46,25 @@ export function studio(path: string, assets: ReturnType<typeof desktopAssets>) {
     case "/":
     case "/app":
       return new Response(
-        String(html).replace(
-          "__DESKTOP_VERSION__",
-          assets.version.replace(/[^a-z0-9. +-]/gi, ""),
-        ),
+        String(html)
+          .replace("__LANG__", locale)
+          .replace(
+            "__NOSCRIPT__",
+            t(
+              "Enable JavaScript to use Upscayl.",
+              "Upscayl을 사용하려면 JavaScript를 켜세요.",
+            ),
+          )
+          .replace("__SETUP__", t("Setup", "연결 및 설치"))
+          .replace(
+            "__DESKTOP_VERSION__",
+            assets.version.replace(/[^a-z0-9. +-]/gi, ""),
+          ),
         {
           headers: {
             ...headers,
             "Content-Type": "text/html; charset=utf-8",
+            ...languageHeaders,
             Link: discoveryLinks,
           },
         },
@@ -57,13 +76,27 @@ export function studio(path: string, assets: ReturnType<typeof desktopAssets>) {
     case "/studio/zip.js":
       return serve(String(zip), "text/javascript; charset=utf-8");
     case "/app.webmanifest":
-      return serve(JSON.stringify(appManifest), "application/manifest+json");
+      return Response.json(
+        {
+          ...appManifest,
+          lang: locale,
+          description: t(
+            "Upscale photos and illustrations on your home server.",
+            "홈 서버에서 사진과 일러스트를 업스케일합니다.",
+          ),
+        },
+        {
+          headers: {
+            ...headers,
+            ...languageHeaders,
+            "Content-Type": "application/manifest+json",
+          },
+        },
+      );
     case "/sw.js": {
       const shell = [
-        "/app",
         "/studio/style.css",
         "/studio/app.js",
-        "/app.webmanifest",
         ...[...assets.files.keys()].filter(
           (key) => !key.startsWith("/studio/models/"),
         ),

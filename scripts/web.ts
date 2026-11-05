@@ -2,7 +2,7 @@ import { mkdir } from "node:fs/promises";
 
 await mkdir("build/web", { recursive: true });
 const result = await Bun.build({
-  entrypoints: ["src/web/main.tsx"],
+  entrypoints: ["src/web/main.tsx", "src/web/sw.js"],
   outdir: "build/web",
   target: "browser",
   minify: true,
