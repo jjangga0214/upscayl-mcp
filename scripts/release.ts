@@ -1,5 +1,5 @@
-import { mkdir, rm, readdir, readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { mkdir, rm, readdir, readFile, rename } from "node:fs/promises";
+import { basename, join, resolve } from "node:path";
 import { packages, platforms } from "../src/assets";
 import { skillBundles } from "../src/skills";
 const dist = resolve("dist");
@@ -32,6 +32,10 @@ for (const entry of await readdir("node_modules", { withFileTypes: true })) {
 }
 const noticePath = join(dist, "THIRD-PARTY-NOTICES.txt");
 await Bun.write(noticePath, notices.join("\n\n"));
+const nativeTarget =
+  (process.platform === "win32" ? "windows" : process.platform) +
+  "-" +
+  process.arch;
 for (const [i, platform] of platforms.entries()) {
   const scratch = join(dist, "build-" + platform);
   await mkdir(scratch, { recursive: true });
@@ -61,8 +65,7 @@ for (const [i, platform] of platforms.entries()) {
     { stdout: "inherit", stderr: "inherit" },
   );
   if (zip.exitCode) throw Error("ZIP failed for " + platform);
-  if (platform === "darwin-arm64")
-    await Bun.write(join(dist, "upscayl-mcp"), Bun.file(exe));
+  if (platform === nativeTarget) await rename(exe, join(dist, basename(exe)));
   await rm(scratch, { recursive: true, force: true });
 }
 const bundles = Object.values(skillBundles);
@@ -76,7 +79,3 @@ for (const name of [...packages, ...bundles.map((b) => b.filename)]) {
   sums.push(hash.digest("hex") + "  " + name);
 }
 await Bun.write(join(dist, "SHA256SUMS"), sums.join("\n") + "\n");
-if (process.platform === "darwin")
-  await import("node:fs/promises").then((fs) =>
-    fs.chmod(join(dist, "upscayl-mcp"), 0o755),
-  );

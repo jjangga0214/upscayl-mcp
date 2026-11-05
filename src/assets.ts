@@ -93,7 +93,7 @@ export function manifest(
     },
     instructions:
       locale === "ko"
-        ? "클라이언트 PC에는 skills.client(또는 skill)의 ZIP을 사용하세요. SHA-256을 확인한 뒤 upscayl 폴더를 ~/.agents/skills에 풉니다. Codex나 OpenCode에서 MCP를 연결하고 /files로 이미지를 전송하세요. 받은 file_id와 설정으로 upscale을 호출하고 get_job으로 확인한 뒤 완료 후 5분 이내에 결과를 이 기기에 저장하세요. 터미널에서는 원격 CLI도 쓸 수 있습니다."
-        : "For a client PC, use skills.client (also exposed as skill). Verify its SHA-256 and extract the upscayl folder into ~/.agents/skills. Connect this MCP endpoint in Codex or OpenCode. POST image bytes to /files, call upscale with file_id and options, poll get_job, and save the result on the requesting device within five minutes of completion. The remote CLI is optional for shell use.",
+        ? "클라이언트 PC에는 skills.client(또는 skill)의 ZIP을 사용하세요. 스킬을 설치하려면 SHA-256을 확인하고 에이전트의 스킬 디렉터리에 압축을 풉니다. Streamable HTTP를 지원하는 MCP 클라이언트에 mcp 주소를 연결하고 /files로 이미지를 전송하세요. 받은 file_id와 설정으로 upscale을 호출하고 get_job으로 확인한 뒤 완료 후 5분 이내에 결과를 이 기기에 저장하세요. 터미널에서는 원격 CLI도 쓸 수 있습니다."
+        : "For a client PC, use skills.client (also exposed as skill). To install the optional skill, verify its SHA-256 and extract the upscayl folder into your agent’s skills directory. Connect the mcp URL in a client that supports Streamable HTTP. POST image bytes to /files, call upscale with file_id and options, poll get_job, and save the result on the requesting device within five minutes of completion. The remote CLI is optional for shell use.",
   };
 }

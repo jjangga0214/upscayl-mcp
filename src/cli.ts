@@ -44,8 +44,7 @@ const show = (value: unknown) => console.log(JSON.stringify(value, null, 2));
 const run = defineCommand({
   meta: {
     name: "upscale",
-    description:
-      "Upscale a single image or a folder on the Mac or its home server",
+    description: "Upscale an image or folder locally or on a LAN host",
   },
   args: {
     input: {
@@ -193,7 +192,7 @@ const cli = defineCommand({
   meta: {
     name: "upscayl-mcp",
     version,
-    description: "Upscayl Desktop on your Mac and home LAN",
+    description: "Use Upscayl Desktop locally or over your home LAN",
   },
   subCommands: {
     upscale: run,
@@ -231,34 +230,41 @@ const cli = defineCommand({
     skill: defineCommand({
       meta: {
         name: "skill",
-        description:
-          "Install role-specific global skills for Codex and OpenCode",
+        description: "Install a client or host skill for compatible agents",
       },
       subCommands: {
         install: defineCommand({
           meta: {
             name: "install",
-            description:
-              "Install the client (default) or host skill into ~/.agents/skills",
+            description: "Install the client (default) or host skill",
           },
           args: {
+            dir: s("Parent skills directory (default: ~/.agents/skills)"),
             role: {
               type: "string",
               default: "client",
               description:
-                "client (remote MCP or CLI) or host (Mac CLI and operations)",
+                "client (remote MCP or CLI) or host (local engine and server)",
             },
           },
           async run({ args }) {
             if (args.role !== "client" && args.role !== "host")
               throw Error("Choose --role client or --role host.");
-            console.log(await installSkill(args.role));
+            console.log(
+              await installSkill(
+                args.role,
+                args.dir ? resolve(args.dir) : undefined,
+              ),
+            );
           },
         }),
       },
     }),
     server: defineCommand({
-      meta: { name: "server", description: "Run and manage the Mac host" },
+      meta: {
+        name: "server",
+        description: "Run the LAN host and manage its macOS login service",
+      },
       subCommands: {
         run: defineCommand({
           meta: { name: "run", description: "Serve in the foreground" },
@@ -270,20 +276,19 @@ const cli = defineCommand({
         start: defineCommand({
           meta: {
             name: "start",
-            description: "Start the background server now",
+            description: "Start the macOS launchd service now",
           },
           args: hostArgs,
           async run({ args }) {
             show(await service("start", undefined, args));
           },
         }),
-        stop: managed("stop", "Stop the current background server"),
-        status: managed("status", "Show running and login states and LAN URL"),
+        stop: managed("stop", "Stop the macOS launchd service"),
+        status: managed("status", "Show macOS launchd status and LAN URL"),
         autostart: defineCommand({
           meta: {
             name: "autostart",
-            description:
-              "Control startup on user login, independently of the current process",
+            description: "Control launchd startup at macOS login",
           },
           args: {
             state: {

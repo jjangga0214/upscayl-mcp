@@ -1,6 +1,6 @@
 # Upscayl Desktop processing
 
-The reference is Upscayl Desktop v2.15.0. The wrapper runs the Mac's installed engine and discovers matching .param and .bin files. The app recognizes 2x/x2 and 3x/x3 in model names and otherwise assumes 4x. A misnamed custom model may fail dimension validation.
+The reference is Upscayl Desktop v2.15.0. The wrapper runs the host's installed engine and discovers matching .param and .bin files. The app recognizes 2x/x2 and 3x/x3 in model names and otherwise assumes 4x. A misnamed custom model may fail dimension validation.
 
 | Setting | What happens |
 |---|---|

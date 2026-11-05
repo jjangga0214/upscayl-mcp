@@ -57,22 +57,32 @@ const previousClient: Record<string, string[]> = {
     "8ff434b1d8628f88e517430baff2cd54d49dfb39a8ba7897360d1ed2c881d8bf",
   ],
   "references/mcp.md": [
+    "737050e5652b7a9f409d512f2354a584a3e8d4281e82a9b5c1fa25137b58fe54",
     "ccad565f9f126d55976fbbe32c82f6245da3e7397ecaa261ebaa3d1163c9ecab",
     "df41aa69f7ced7896c259acb36830f50830741e723be4c6bec0c62af131cc0ef",
     "97611f3340d6ab0bc3e36dbd2bb6c0f3998394b0f319799e6cf84ca51967ee6a",
   ],
   "references/behavior.md": [
+    "cbd2e85d0a8fd1b442039b3730cc5b34801b613c6eaab019eb294a44f68e3933",
     "2bcecdbc45887184a836476f1aa538a11d4c691c67bb3ffe007b338c23fe19d5",
   ],
 };
 
 const previousHost: Record<string, string[]> = {
   "SKILL.md": [
+    "efa3f61739601a304f8c1d4e7e3617a203cb405af9196b2cca9401235373fd21",
     "559581c1e2ac53fa91465887b65822676fc87bdf5f4fb81627396553e94d7d19",
     "6fda146fc3d19551b16a3e13c10c59756def7f5a69174b61c9ccb1c45ec9d0ba",
   ],
   "references/server.md": [
+    "181012133aa8c419a506452d3eda67b971b352ad421ad78a0c9946612849c42c",
     "26e0e8b29ee49a9a64f8dea0395ba0ab8afc7263ba21c0b70252948358e9e250",
+  ],
+  "references/cli.md": [
+    "d85ac78b2b7b2b5e93821a9d9f052585ed07f106d4f8a988343e8b6c922cf932",
+  ],
+  "references/behavior.md": [
+    "cbd2e85d0a8fd1b442039b3730cc5b34801b613c6eaab019eb294a44f68e3933",
   ],
 };
 export async function installSkill(

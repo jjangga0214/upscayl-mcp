@@ -50,8 +50,8 @@ export function certificateGuide(
       "HTTPS 주소에 접속할 기기와 에이전트가 발급 기관을 신뢰해야 합니다. 사설 CA를 쓴다면 운영자에게 공개 루트 인증서와 지문을 받으세요.",
     );
   return t(
-    "Before trusting the public CA on a client, match the downloaded certificate’s SHA-256 fingerprint with the one the operator reads from upscayl-mcp server status on the host.",
-    "클라이언트에서 공개 CA를 신뢰하기 전에 다운로드한 인증서의 SHA-256 지문을 운영자가 호스트의 upscayl-mcp server status에서 확인한 값과 대조하세요.",
+    "Before trusting the public CA on a client, match the downloaded certificate’s SHA-256 fingerprint with the one printed by the host at startup or shown by macOS server status.",
+    "클라이언트에서 공개 CA를 신뢰하기 전에 다운로드한 인증서의 SHA-256 지문을 호스트 시작 시 출력된 값 또는 macOS의 server status 값과 대조하세요.",
   );
 }
 
@@ -67,6 +67,7 @@ export function agentGuide(
     "",
     t("## Connect", "## 연결"),
     "Streamable HTTP MCP: " + m.mcp,
+    t("Client setup examples", "클라이언트 설정 예시"),
     "Codex: `" + m.codex + "`",
     t(
       "OpenCode: merge this JSON with your configuration:",
@@ -87,10 +88,7 @@ export function agentGuide(
       : []),
     certificateGuide(m, locale),
     "",
-    t(
-      "## Client skill (Codex and OpenCode)",
-      "## 클라이언트 스킬 (Codex 및 OpenCode)",
-    ),
+    t("## Optional client skill", "## 클라이언트 스킬 (선택 사항)"),
     t("Skill ZIP: ", "스킬 ZIP: ") + m.skills.client.url,
     t("Skill SHA-256: ", "스킬 SHA-256: ") + m.skills.client.sha256,
     "",

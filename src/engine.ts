@@ -75,20 +75,39 @@ export type Options = z.output<typeof optionsSchema>;
 export type Size = { width: number; height: number };
 export type Model = { id: string; nativeScale: number; folder: string };
 
-export function engine() {
-  const app =
-    process.env.UPSCAYL_APP ||
-    [
+function installationRoots() {
+  if (process.env.UPSCAYL_APP) return [resolve(process.env.UPSCAYL_APP)];
+  if (process.platform === "darwin")
+    return [
       "/Applications/Upscayl.app",
       join(homedir(), "Applications/Upscayl.app"),
-    ].find(existsSync);
-  if (!app)
+    ];
+  if (process.platform === "win32") {
+    const roots: string[] = [];
+    if (process.env.ProgramFiles)
+      roots.push(join(process.env.ProgramFiles, "Upscayl"));
+    if (process.env.LOCALAPPDATA)
+      roots.push(join(process.env.LOCALAPPDATA, "Programs", "Upscayl"));
+    return roots;
+  }
+  return ["/opt/Upscayl", "/opt/upscayl", "/usr/lib/upscayl"];
+}
+
+export function engine() {
+  const executable =
+    process.platform === "win32" ? "upscayl-bin.exe" : "upscayl-bin";
+  const resources = installationRoots()
+    .flatMap((root) => [
+      join(root, "Contents", "Resources"),
+      join(root, "resources"),
+      root,
+    ])
+    .find((dir) => existsSync(join(dir, "bin", executable)));
+  if (!resources)
     throw Error(
-      "Install Upscayl on the host or set UPSCAYL_APP; on a client use --server.",
+      "Upscayl engine not found. Set UPSCAYL_APP to the desktop installation or its resources directory, or use --server to connect to a host.",
     );
-  const resources = join(resolve(app), "Contents/Resources");
-  const bin = join(resources, "bin/upscayl-bin");
-  if (!existsSync(bin)) throw Error("Missing engine in " + resources);
+  const bin = join(resources, "bin", executable);
   const models = new Map<string, Model>();
   for (const folder of [
     join(resources, "models"),

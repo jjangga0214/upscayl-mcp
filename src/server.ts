@@ -27,8 +27,9 @@ export async function serve(cfg: HostConfig, requireTls: boolean) {
   const plain = serverOrigin("http", name, cfg.port);
   const bound = serverOrigin("http", host, cfg.port);
   let secure: ReturnType<typeof httpsSettings>;
-  const jobs = await Jobs.create(engine());
-  const assets = desktopAssets(jobs.backend.bin, jobs.root);
+  const backend = engine();
+  const assets = await desktopAssets(backend.bin);
+  const jobs = await Jobs.create(backend);
   const listen = (
     base: string,
     listenPort: number,
@@ -265,6 +266,7 @@ export async function serve(cfg: HostConfig, requireTls: boolean) {
     throw error;
   }
   console.log(plain, secure?.url ?? "");
+  if (secure?.ca) console.log("CA SHA-256:", secure.ca.fingerprint256);
   let stopping = false;
   const stop = async () => {
     if (stopping) return;

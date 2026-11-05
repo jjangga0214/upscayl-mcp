@@ -74,7 +74,9 @@ export async function service(
   options: HostOptions = {},
 ) {
   if (process.platform !== "darwin")
-    throw Error("Service control runs on the host Mac.");
+    throw Error(
+      "Managed service commands use macOS launchd. Use upscayl-mcp server run for a foreground server on this host.",
+    );
   const before = ctl("print", target);
   const loaded = before.exitCode === 0;
   let cfg: HostConfig = existsSync(config)

@@ -29,7 +29,7 @@ export const discoveryLinks =
   '</manifest.json>; rel="describedby"; type="application/json", </llms.txt>; rel="alternate"; type="text/markdown", </app>; rel="alternate"; type="text/html"';
 export function studio(
   path: string,
-  assets: ReturnType<typeof desktopAssets>,
+  assets: Awaited<ReturnType<typeof desktopAssets>>,
   locale: Locale,
 ) {
   const t = localized(locale);

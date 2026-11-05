@@ -41,8 +41,8 @@ export async function handleMcp(req: Request, jobs: Jobs, locale: Locale) {
     "list_models",
     {
       description: t(
-        "Models available on this Mac.",
-        "이 맥에서 사용할 수 있는 모델을 조회합니다.",
+        "Models available on this host.",
+        "이 호스트에서 사용할 수 있는 모델을 조회합니다.",
       ),
     },
     () => reply(models(jobs, locale)),
@@ -63,8 +63,8 @@ export async function handleMcp(req: Request, jobs: Jobs, locale: Locale) {
     "upscale",
     {
       description: t(
-        "Queue one uploaded image on the Mac GPU.",
-        "업로드한 이미지 한 장을 맥의 GPU 처리 대기열에 추가합니다.",
+        "Queue one uploaded image on the host GPU.",
+        "업로드한 이미지 한 장을 호스트의 GPU 처리 대기열에 추가합니다.",
       ),
       inputSchema: { file_id: id, options: opts },
     },
