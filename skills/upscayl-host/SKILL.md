@@ -10,5 +10,5 @@ Use English for user-facing replies by default. Use Korean when the user writes 
 For an image on the host Mac, run `upscayl-mcp upscale "photo.png"` directly with the installed desktop engine. Local processing works while the LAN service is stopped.
 
 - For models, files, folders, output paths and local comparison, read [local CLI](references/cli.md).
-- For the server address, start/stop, login, HTTPS, logs and temporary files, read [host operations](references/server.md). Give another PC the URL reported by `upscayl-mcp server status`.
+- To configure this Mac’s LAN IP, DNS name, ports, TLS certificate or public CA, or to manage startup, logs and temporary files, read [host operations](references/server.md). Give another PC the URL reported by `upscayl-mcp server status`.
 - For the effect of a model or option, read [output behavior](references/behavior.md). Run `upscayl-mcp upscale "photo.png" --explain` for the actual processing plan.

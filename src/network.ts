@@ -1,5 +1,6 @@
 import { networkInterfaces } from "node:os";
 import { isIPv4 } from "node:net";
+import { domainToASCII } from "node:url";
 
 export function privateIPv4(ip: string) {
   if (!isIPv4(ip)) return false;
@@ -47,4 +48,31 @@ export function portNumber(value: unknown) {
   if (!Number.isInteger(n) || n < 1 || n > 65535)
     throw Error("Port must be an integer from 1 to 65535.");
   return n;
+}
+
+export function domainName(value: string) {
+  if (value === "") return undefined;
+  const input = value.replace(/\.$/, "");
+  const name = domainToASCII(input).toLowerCase();
+  if (
+    !/^[\p{L}\p{N}\p{M}.\-]+$/u.test(input) ||
+    !name ||
+    name.length > 253 ||
+    isIPv4(name) ||
+    !name
+      .split(".")
+      .every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))
+  )
+    throw Error(
+      "Use a DNS hostname for --domain and a private IPv4 for --host.",
+    );
+  return name;
+}
+
+export function serverOrigin(
+  scheme: "http" | "https",
+  name: string,
+  port: number,
+) {
+  return new URL(scheme + "://" + name + ":" + port).origin;
 }

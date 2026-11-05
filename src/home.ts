@@ -1,12 +1,8 @@
 import type { manifest } from "./assets";
-import type { httpsSettings } from "./tls";
+import { certificateGuide, verifyCertificate } from "./discovery";
 import { localized, type Locale } from "./locale";
 
-export function home(
-  info: ReturnType<typeof manifest>,
-  secure: ReturnType<typeof httpsSettings>,
-  locale: Locale,
-) {
+export function home(info: ReturnType<typeof manifest>, locale: Locale) {
   const t = localized(locale);
   const labels: Record<string, string> = {
     "darwin-arm64": "macOS · Apple Silicon",
@@ -20,12 +16,14 @@ export function home(
       ([platform, url]) => `<li><a href="${url}">${labels[platform]}</a></li>`,
     )
     .join("");
-  const pwa = secure
-    ? `<p><a href="${secure.url}/app">${t("Open Upscayl over HTTPS", "HTTPS에서 Upscayl 열기")}</a></p>` +
-      (secure.ca
-        ? `<p><a href="/pwa-ca.cer">${t("Download the public CA certificate", "공개 CA 인증서 받기")}</a></p><p>${t("Before trusting the certificate on this device, compare this SHA-256 fingerprint with the output of <code>upscayl-mcp server status</code> on the host Mac.", "이 기기에서 인증서를 신뢰하기 전에 호스트 맥의 <code>upscayl-mcp server status</code>에 표시된 SHA-256 지문과 대조하세요.")}</p><pre>${secure.ca.fingerprint256}</pre>`
-        : "")
-    : `<p>${t("Configure HTTPS on the host to install the app over the LAN. On the host itself, a loopback address also works.", "LAN에서 앱을 설치하려면 호스트에 HTTPS를 설정하세요. 같은 기기에서는 루프백 주소로도 설치할 수 있습니다.")}</p>`;
+  const tls = info.tls;
+  const pwa =
+    (tls.enabled
+      ? `<p><a href="${tls.url}/app">${tls.url}/app</a></p>` +
+        (tls.ca
+          ? `<p><a href="${tls.ca.url}">${t("Download the public CA certificate", "공개 CA 인증서 받기")}</a></p><pre>SHA-256  ${tls.ca.sha256}</pre><pre>${verifyCertificate}</pre>`
+          : "")
+      : "") + `<p>${certificateGuide(info, locale)}</p>`;
   return `<!doctype html><html lang="${locale}"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Upscayl · ${t("Home server", "홈 서버")}</title>
 <style>:root{color-scheme:light dark;--ink:light-dark(#18231e,#e7eee9);--bg:light-dark(#fafbf8,#151a16);--line:light-dark(#d3dcd2,#3c443f);--link:light-dark(#1d6440,#92debd)}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,sans-serif}main{max-width:50rem;margin:4rem auto;padding:0 1.5rem}header{display:flex;align-items:baseline;gap:1rem}h1{font-size:2.5rem;letter-spacing:-.05em;margin:0}h2{font-size:1.25rem;margin:.2rem 0 .6rem}h3{font-size:1rem;margin:1rem 0 .25rem}section{border-top:1px solid var(--line);padding:1.2rem 0}pre{border-left:3px solid var(--link);padding:.5rem 1rem;overflow:auto}a{color:var(--link);text-underline-offset:.2em}ul{padding-left:1.3rem}footer{border-top:1px solid var(--line);padding-top:1rem;display:flex;gap:1rem;flex-wrap:wrap}</style>
 <main><a href="/app">← Upscayl</a><header><h1>Upscayl</h1><span>v${info.version}</span></header>

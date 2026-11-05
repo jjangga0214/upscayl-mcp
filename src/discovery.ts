@@ -31,6 +31,30 @@ export function rootFormat(h: Headers): Format {
     return "html";
   return "markdown";
 }
+export const verifyCertificate =
+  "openssl x509 -inform DER -in upscayl-lan-ca.cer -noout -fingerprint -sha256";
+
+export function certificateGuide(
+  info: ReturnType<typeof manifest>,
+  locale: Locale,
+) {
+  const t = localized(locale);
+  if (!info.tls.enabled)
+    return t(
+      "This host serves HTTP. For an installable LAN PWA, configure HTTPS on the host.",
+      "이 호스트는 HTTP를 제공합니다. LAN에서 PWA를 설치하려면 호스트에 HTTPS를 설정하세요.",
+    );
+  if (!info.tls.ca)
+    return t(
+      "Use the configured HTTPS name with a device or agent that trusts its issuer. If it uses a private CA, obtain the public root and its fingerprint from the operator.",
+      "HTTPS 주소에 접속할 기기와 에이전트가 발급 기관을 신뢰해야 합니다. 사설 CA를 쓴다면 운영자에게 공개 루트 인증서와 지문을 받으세요.",
+    );
+  return t(
+    "Before trusting the public CA on a client, match the downloaded certificate’s SHA-256 fingerprint with the one the operator reads from upscayl-mcp server status on the host.",
+    "클라이언트에서 공개 CA를 신뢰하기 전에 다운로드한 인증서의 SHA-256 지문을 운영자가 호스트의 upscayl-mcp server status에서 확인한 값과 대조하세요.",
+  );
+}
+
 export function agentGuide(
   m: ReturnType<typeof manifest>,
   locale: Locale = "en",
@@ -51,6 +75,17 @@ export function agentGuide(
     "```json",
     JSON.stringify(m.opencode, null, 2),
     "```",
+    "",
+    t("## HTTPS and certificates", "## HTTPS와 인증서"),
+    ...(m.tls.enabled ? ["HTTPS: " + m.tls.url] : []),
+    ...(m.tls.enabled && m.tls.ca
+      ? [
+          t("Public CA: ", "공개 CA: ") + m.tls.ca.url,
+          "SHA-256: " + m.tls.ca.sha256,
+          "`" + verifyCertificate + "`",
+        ]
+      : []),
+    certificateGuide(m, locale),
     "",
     t(
       "## Client skill (Codex and OpenCode)",

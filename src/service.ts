@@ -2,7 +2,15 @@ import { existsSync, realpathSync } from "node:fs";
 import { mkdir, rename, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { homedir } from "node:os";
-import { listenAddress, portNumber } from "./network";
+import { listenAddress, serverOrigin } from "./network";
+import {
+  configureHost,
+  hasTlsOptions,
+  type HostConfig,
+  type HostOptions,
+} from "./host-config";
+import { httpsSettings } from "./tls";
+import { isDeepStrictEqual } from "node:util";
 
 const label = "io.github.jjangga0214.upscayl-mcp";
 const home = homedir();
@@ -20,7 +28,6 @@ function runCtl(...args: string[]) {
   if (r.exitCode !== 0)
     throw Error("launchctl " + args[0] + ": " + r.stderr.toString().trim());
 }
-type Config = { host?: string; port: number; env: Record<string, string> };
 const xml = (v: string) =>
   v.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 async function atomic(path: string, value: string) {
@@ -33,12 +40,13 @@ async function atomic(path: string, value: string) {
     await rm(tmp, { force: true });
   }
 }
-function plist(cfg: Config) {
+function plist(cfg: HostConfig) {
   const exe = realpathSync(process.execPath);
   const cmd = [exe];
   if (/[/\\]bun(?:\.exe)?$/.test(exe)) cmd.push(resolve(process.argv[1]));
   cmd.push("server", "run", "--port", String(cfg.port));
   if (cfg.host) cmd.push("--host", cfg.host);
+  if (cfg.domain) cmd.push("--domain", cfg.domain);
   return (
     '<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict>' +
     "<key>Label</key><string>" +
@@ -63,25 +71,15 @@ function plist(cfg: Config) {
 export async function service(
   action: string,
   toggle?: string,
-  host?: string,
-  port?: string,
+  options: HostOptions = {},
 ) {
   if (process.platform !== "darwin")
     throw Error("Service control runs on the host Mac.");
   const before = ctl("print", target);
   const loaded = before.exitCode === 0;
-  const cfg: Config = existsSync(config)
+  let cfg: HostConfig = existsSync(config)
     ? await Bun.file(config).json()
     : { port: 8765, env: {} };
-  if (host || port) {
-    if (
-      loaded &&
-      ((host && cfg.host !== host) || (port && cfg.port !== portNumber(port)))
-    )
-      throw Error("Stop the service before changing its address.");
-    if (host) cfg.host = listenAddress(host);
-    if (port) cfg.port = portNumber(port);
-  }
   if (action === "stop" && loaded) {
     runCtl("bootout", target);
     for (let i = 0; i < 40 && ctl("print", target).exitCode === 0; i++)
@@ -93,33 +91,32 @@ export async function service(
     throw Error("Use autostart on or off.");
   if (action === "autostart" && toggle === "off")
     await rm(persistent, { force: true });
+  let definition: string | undefined;
+  let expectedHttps: string | undefined;
   if (action === "start" || (action === "autostart" && toggle === "on")) {
-    for (const key of [
-      "UPSCAYL_APP",
-      "UPSCAYL_MODELS_DIR",
-      "UPSCAYL_DIST",
-      "UPSCAYL_TLS_CERT",
-      "UPSCAYL_TLS_KEY",
-      "UPSCAYL_TLS_CA",
-    ])
-      if (process.env[key]) cfg.env[key] = resolve(process.env[key]!);
-    if (process.env.UPSCAYL_TLS_PORT)
-      cfg.env.UPSCAYL_TLS_PORT = String(
-        portNumber(process.env.UPSCAYL_TLS_PORT),
+    const next = configureHost(options, cfg);
+    const changed = !isDeepStrictEqual(next, cfg);
+    if (loaded && changed)
+      throw Error(
+        "Stop the service before changing its address or TLS settings.",
       );
+    if (changed || next.domain || hasTlsOptions(options))
+      expectedHttps = httpsSettings(
+        next.domain ?? listenAddress(next.host),
+        next.port,
+        next.env,
+      )?.url;
+    cfg = next;
     await mkdir(logDir, { recursive: true });
-    await atomic(config, JSON.stringify(cfg));
-    const definition = plist(cfg);
-    if (existsSync(persistent) || action === "autostart")
-      await atomic(persistent, definition);
+    definition = plist(cfg);
     if (action === "start" && !loaded) {
       await atomic(manual, definition);
-      runCtl("bootstrap", domain, existsSync(persistent) ? persistent : manual);
+      runCtl("bootstrap", domain, manual);
     }
   }
   const address = (() => {
     try {
-      return "http://" + listenAddress(cfg.host) + ":" + cfg.port;
+      return serverOrigin("http", listenAddress(cfg.host), cfg.port);
     } catch {
       return undefined;
     }
@@ -135,9 +132,11 @@ export async function service(
       const pid = ctl("print", target)
         .stdout.toString()
         .match(/^\s*pid = (\d+)$/m)?.[1];
+      if (!r.ok || info.name !== "upscayl-mcp" || Number(pid) !== info.pid)
+        return false;
       pwa = info.pwa;
       ca_sha256 = info.ca_sha256;
-      return r.ok && info.name === "upscayl-mcp" && Number(pid) === info.pid;
+      return true;
     } catch {
       return false;
     }
@@ -145,24 +144,33 @@ export async function service(
   if (action === "start") {
     let ok = false;
     for (let i = 0; i < 40; i++) {
-      if (await health()) {
+      if ((await health()) && (!expectedHttps || pwa === expectedHttps)) {
         ok = true;
         break;
       }
       await Bun.sleep(170);
     }
-    if (!ok)
+    if (!ok) {
+      if (!loaded) runCtl("bootout", target);
       throw Error(
         "Service did not become ready. Inspect " +
           join(logDir, "server.err.log"),
       );
+    }
+  }
+  // Only replace the saved configuration and login agent after a new start is healthy.
+  if (definition) {
+    if (existsSync(persistent) || action === "autostart")
+      await atomic(persistent, definition);
+    await atomic(config, JSON.stringify(cfg));
   }
   const running = ctl("print", target).exitCode === 0;
   return {
     running: running && (await health()),
     loaded: running,
     autostart: existsSync(persistent),
-    url: address,
+    url: cfg.domain ? serverOrigin("http", cfg.domain, cfg.port) : address,
+    bind_url: address,
     pwa,
     ca_sha256,
     log: join(logDir, "server.err.log"),

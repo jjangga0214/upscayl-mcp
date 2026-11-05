@@ -18,7 +18,7 @@ import { terminalLocale } from "./terminal-locale";
 import { describeModel } from "./catalog";
 import { endpoint, remoteFile, remoteModels } from "./client";
 import { installSkill } from "./skills";
-import { listenAddress, portNumber } from "./network";
+import { configureHost, hasTlsOptions } from "./host-config";
 import { service } from "./service";
 import { compareLocal } from "./compare";
 import { serve } from "./server";
@@ -27,7 +27,17 @@ const s = (description: string) => ({ type: "string" as const, description });
 const b = (description: string) => ({ type: "boolean" as const, description });
 const remote = s("Home server URL or IP:port");
 const hostArgs = {
-  host: s("Bind a specific private IPv4; default is the primary LAN"),
+  host: s("Assigned private IPv4 or auto (default: primary LAN)"),
+  domain: s(
+    "LAN DNS name for client URLs; pass an empty string to use the bind IP",
+  ),
+  "https-port": s("HTTPS listener port (default: HTTP port + 1)"),
+  "tls-cert": s("PEM server certificate, including intermediates if needed"),
+  "tls-key": s("PEM private key matching the server certificate"),
+  "tls-ca": s(
+    "Optional public CA certificate to share; empty string clears it",
+  ),
+  "http-only": b("Clear HTTPS settings and serve HTTP only"),
   port: s("TCP port, default 8765"),
 };
 const show = (value: unknown) => console.log(JSON.stringify(value, null, 2));
@@ -175,9 +185,8 @@ const run = defineCommand({
 const managed = (action: string, description: string) =>
   defineCommand({
     meta: { name: action, description },
-    args: hostArgs,
-    async run({ args }) {
-      show(await service(action, undefined, args.host, args.port));
+    async run() {
+      show(await service(action));
     },
   });
 const cli = defineCommand({
@@ -255,13 +264,19 @@ const cli = defineCommand({
           meta: { name: "run", description: "Serve in the foreground" },
           args: hostArgs,
           async run({ args }) {
-            await serve(
-              listenAddress(args.host),
-              portNumber(args.port ?? 8765),
-            );
+            await serve(configureHost(args), hasTlsOptions(args));
           },
         }),
-        start: managed("start", "Start the background server now"),
+        start: defineCommand({
+          meta: {
+            name: "start",
+            description: "Start the background server now",
+          },
+          args: hostArgs,
+          async run({ args }) {
+            show(await service("start", undefined, args));
+          },
+        }),
         stop: managed("stop", "Stop the current background server"),
         status: managed("status", "Show running and login states and LAN URL"),
         autostart: defineCommand({
@@ -279,7 +294,7 @@ const cli = defineCommand({
             ...hostArgs,
           },
           async run({ args }) {
-            show(await service("autostart", args.state, args.host, args.port));
+            show(await service("autostart", args.state, args));
           },
         }),
       },

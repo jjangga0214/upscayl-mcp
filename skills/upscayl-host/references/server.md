@@ -8,8 +8,25 @@
 
 Start and stop control the running service. Autostart controls the next macOS user login through launchd. Check `running`, `autostart` and `url` in status. For another PC, give the reported LAN URL. Its browser opens the app, and its agent can discover the client skill and MCP connection from the same address.
 
-The default is the active private IPv4 and port 8765. To change a running service's binding, stop it and then start with `--host <LAN-IP> --port <PORT>`. For foreground diagnostics use `upscayl-mcp server run --host 127.0.0.1 --port 8766`. During sleep the Mac is unavailable. If startup fails, read the log path returned by status, check the LAN address, and verify local engine discovery with `upscayl-mcp models`.
+## Choose the address
 
-For installable PWA access from another device, provide a certificate covering the LAN IP and its private key when starting the service. `UPSCAYL_TLS_CERT` and `UPSCAYL_TLS_KEY` are paths. Optionally set `UPSCAYL_TLS_CA` to the **public** CA certificate and `UPSCAYL_TLS_PORT` for a separate HTTPS port (default HTTP port + 1). Status reports the PWA URL and configured CA fingerprint. Compare the fingerprint before trusting that CA on a client device. Keep the unauthenticated service on the trusted LAN.
+By default the service binds the active private IPv4 on port 8765. To customize an existing service, finish active jobs and stop it first. For example, if the Mac owns 192.168.50.20 and every client resolves studio.home.arpa to it:
+
+    upscayl-mcp server start --host 192.168.50.20 --domain studio.home.arpa --port 9080
+    upscayl-mcp server status
+
+Substitute the operator's addresses. `--host` selects the Mac’s network interface; `--host auto` restores automatic selection. `--domain` selects the hostname advertised to clients. Set up local DNS (or client hosts entries) separately. Omit the domain on first use to share the IP, or pass `--domain ''` to clear a saved name. HTTP on the bind IP also serves discovery. Use the configured name for HTTPS. Use the same options with `server run` for foreground testing. A managed start saves settings for later starts and login in the user’s Library/Application Support/upscayl-mcp/service.json.
+
+## Configure HTTPS and certificate trust
+
+Provide a PEM certificate chain and its matching private key. The leaf certificate must include the advertised DNS name in a DNS SAN, or the actual IP in an IP SAN when sharing an IP. Use an existing certificate for that name, or issue one with your private CA. For example, with mkcert installed, `mkcert -cert-file lan.pem -key-file lan-key.pem studio.home.arpa` issues a certificate for that name; the public root is `rootCA.pem` in the directory printed by `mkcert -CAROOT`. Keep the CA key on its issuing machine.
+
+    upscayl-mcp server start --host 192.168.50.20 --domain studio.home.arpa --port 9080 \
+      --https-port 9443 --tls-cert /path/to/fullchain.pem --tls-key /path/to/key.pem \
+      --tls-ca /path/to/public-root.pem
+
+Substitute the operator’s paths. The HTTPS port defaults to HTTP port + 1. Omit `--tls-ca` when the clients already trust the issuer, or pass `--tls-ca ''` to remove a previously shared root. `--http-only` clears saved HTTPS settings. Legacy `UPSCAYL_TLS_CERT`, `UPSCAYL_TLS_KEY`, `UPSCAYL_TLS_CA` and `UPSCAYL_TLS_PORT` environment variables also work; explicit options take precedence.
+
+Give clients the `url` or `pwa` from `server status`. `/setup`, `/llms.txt` and `/manifest.json` publish this installation’s addresses and optional public CA download. Share the `ca_sha256` from the host separately so clients can verify the downloaded certificate before trusting it. Renew an expired certificate or reissue it for a changed hostname/IP. Inspect the log path from status if startup fails; use `upscayl-mcp models` to check engine discovery. Keep this unauthenticated service on the trusted LAN.
 
 Web and MCP jobs use temporary server storage. Completed, failed and cancelled jobs expire after five minutes, and downloads do not reset that deadline. Unused uploads expire after five minutes. Restarting the service invalidates job IDs, so let active jobs and downloads finish before a planned restart.

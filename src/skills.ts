@@ -48,6 +48,7 @@ export const skillBundles = {
 // Exact earlier official file contents accepted for in-place upgrades.
 const previousClient: Record<string, string[]> = {
   "SKILL.md": [
+    "6aeb518d8fc3d06ce09341836c6a5c28ab2732f6c54c79b11ed5c0ec8311439b",
     "8b7c4897f98d3e70a7d934c298966890678c4839a51d3ef1f4329ae929125768",
     "ec14805f1b8ff3fed81f149023193ef64b91802ac208693759dc9f2dc8cdfd18",
     "9a57eb39fb761697d7009354f363aa0dac72ea4855ac0f87bf91ac204e036f12",
@@ -56,6 +57,7 @@ const previousClient: Record<string, string[]> = {
     "8ff434b1d8628f88e517430baff2cd54d49dfb39a8ba7897360d1ed2c881d8bf",
   ],
   "references/mcp.md": [
+    "ccad565f9f126d55976fbbe32c82f6245da3e7397ecaa261ebaa3d1163c9ecab",
     "df41aa69f7ced7896c259acb36830f50830741e723be4c6bec0c62af131cc0ef",
     "97611f3340d6ab0bc3e36dbd2bb6c0f3998394b0f319799e6cf84ca51967ee6a",
   ],
@@ -66,7 +68,11 @@ const previousClient: Record<string, string[]> = {
 
 const previousHost: Record<string, string[]> = {
   "SKILL.md": [
+    "559581c1e2ac53fa91465887b65822676fc87bdf5f4fb81627396553e94d7d19",
     "6fda146fc3d19551b16a3e13c10c59756def7f5a69174b61c9ccb1c45ec9d0ba",
+  ],
+  "references/server.md": [
+    "26e0e8b29ee49a9a64f8dea0395ba0ab8afc7263ba21c0b70252948358e9e250",
   ],
 };
 export async function installSkill(

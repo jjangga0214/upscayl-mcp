@@ -10,7 +10,8 @@ import { httpsSettings } from "./tls";
 import { home } from "./home";
 import { comparison } from "./compare";
 import { download, manifest } from "./assets";
-import { privateIPv4 } from "./network";
+import type { HostConfig } from "./host-config";
+import { listenAddress, privateIPv4, serverOrigin } from "./network";
 import { version } from "../package.json";
 import { z } from "zod";
 
@@ -20,17 +21,25 @@ const requestSettings = z
   .strict();
 const text = (message: string, status: number) =>
   Response.json({ error: message }, { status });
-export async function serve(host: string, port: number) {
+export async function serve(cfg: HostConfig, requireTls: boolean) {
+  const host = listenAddress(cfg.host);
+  const name = cfg.domain ?? host;
+  const plain = serverOrigin("http", name, cfg.port);
+  const bound = serverOrigin("http", host, cfg.port);
+  let secure: ReturnType<typeof httpsSettings>;
   const jobs = await Jobs.create(engine());
   const assets = desktopAssets(jobs.backend.bin, jobs.root);
-  let secure: ReturnType<typeof httpsSettings>;
-  const plain = new URL("http://" + host + ":" + port).origin;
   const listen = (
     base: string,
     listenPort: number,
     tls?: { cert: Buffer; key: Buffer },
   ) => {
-    const manifests = { en: manifest(base, "en"), ko: manifest(base, "ko") };
+    const manifests = {
+      en: manifest(base, "en", secure),
+      ko: manifest(base, "ko", secure),
+    };
+    // The bind IP is also an HTTP bootstrap address for discovering the configured name.
+    const origins = new Set(tls ? [base] : [base, bound]);
     return Bun.serve({
       hostname: host,
       port: listenPort,
@@ -41,11 +50,13 @@ export async function serve(host: string, port: number) {
         const url = new URL(req.url);
         const origin = req.headers.get("origin");
         const peer = server.requestIP(req)?.address ?? "";
+        const authority = req.headers.get("host")?.toLowerCase();
         if (
           !privateIPv4(peer.replace(/^::ffff:/, "")) ||
-          req.headers.get("host") !== url.host ||
-          url.origin !== base ||
-          (origin && origin !== base)
+          (authority !== url.host &&
+            authority !== url.hostname + ":" + listenPort) ||
+          !origins.has(url.origin) ||
+          (origin && origin !== url.origin)
         )
           return text("Unrecognized LAN address, Host or Origin.", 403);
         const p = url.pathname;
@@ -84,7 +95,7 @@ export async function serve(host: string, port: number) {
                   },
                 });
               if (format === "guideHtml")
-                return new Response(home(info, secure, locale), {
+                return new Response(home(info, locale), {
                   headers: {
                     ...headers,
                     "Content-Type": "text/html; charset=utf-8",
@@ -97,7 +108,7 @@ export async function serve(host: string, port: number) {
             const page = studio(p, assets, locale);
             if (page) return page;
             if (p === "/setup")
-              return new Response(home(info, secure, locale), {
+              return new Response(home(info, locale), {
                 headers: {
                   "Content-Type": "text/html; charset=utf-8",
                   ...languageHeaders,
@@ -232,17 +243,26 @@ export async function serve(host: string, port: number) {
       },
     });
   };
-  const web = listen(plain, port);
+  let web: ReturnType<typeof listen>;
   let https: typeof web | undefined;
   try {
-    secure = httpsSettings(host, port);
-    if (secure) https = listen(secure.url, secure.port, secure.tls);
+    try {
+      secure = httpsSettings(name, cfg.port, cfg.env);
+      if (secure) https = listen(secure.url, secure.port, secure.tls);
+    } catch (error) {
+      if (requireTls || cfg.domain) throw error;
+      // Existing IP-only services keep HTTP discovery available after a TLS failure.
+      secure = undefined;
+      console.error(
+        "HTTPS unavailable:",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+    web = listen(plain, cfg.port);
   } catch (error) {
-    secure = undefined;
-    console.error(
-      "HTTPS unavailable:",
-      error instanceof Error ? error.message : String(error),
-    );
+    await https?.stop(true);
+    await rm(jobs.root, { recursive: true, force: true });
+    throw error;
   }
   console.log(plain, secure?.url ?? "");
   let stopping = false;

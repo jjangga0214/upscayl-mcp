@@ -5,6 +5,8 @@ import { CACHE_MS } from "./jobs";
 import { skillBundles } from "./skills";
 import type { Locale } from "./locale";
 
+import type { httpsSettings } from "./tls";
+
 export const repo = "https://github.com/jjangga0214/upscayl-mcp";
 export const platforms = [
   "darwin-arm64",
@@ -36,7 +38,11 @@ export function download(name: string) {
     302,
   );
 }
-export function manifest(base: string, locale: Locale = "en") {
+export function manifest(
+  base: string,
+  locale: Locale = "en",
+  secure?: ReturnType<typeof httpsSettings>,
+) {
   const link = (bundle: typeof skillBundles.client) => ({
     name: bundle.name,
     url: base + "/downloads/" + bundle.filename,
@@ -54,6 +60,15 @@ export function manifest(base: string, locale: Locale = "en") {
     setup: base + "/setup",
     manifest: base + "/manifest.json",
     cache_ttl_seconds: CACHE_MS / 1000,
+    tls: secure
+      ? ({
+          enabled: true,
+          url: secure.url,
+          ca: secure.ca
+            ? { url: base + "/pwa-ca.cer", sha256: secure.ca.fingerprint256 }
+            : null,
+        } as const)
+      : ({ enabled: false } as const),
     transport: "streamable-http",
     authentication: "none (trusted home LAN)",
     mcp: base + "/mcp",
