@@ -290,6 +290,7 @@ export async function upscale(
       });
       const kill = () => proc.kill("SIGKILL");
       signal?.addEventListener("abort", kill, { once: true });
+      onProgress?.("pass " + (i + 1) + "/" + predicted.passes.length);
       let tail = "";
       try {
         for await (const chunk of proc.stderr) {

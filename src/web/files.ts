@@ -60,12 +60,35 @@ type Job = {
   result: string;
   error?: string;
 };
+export type ProcessingStep =
+  | { stage: "upload" | "prepare" | "queued" | "receive" | "cancel" }
+  | {
+      stage: "process";
+      pass?: { index: number; total: number; percent?: number };
+    };
+
+function jobStep(job: Job): ProcessingStep {
+  if (job.status === "queued") return { stage: "queued" };
+  const match = /^pass (\d+)\/(\d+)(?: (\d+(?:\.\d+)?)%)?$/.exec(job.progress);
+  if (!match) return { stage: "process" };
+  return {
+    stage: "process",
+    pass: {
+      index: Number(match[1]),
+      total: Number(match[2]),
+      percent:
+        match[3] === undefined
+          ? undefined
+          : Math.min(100, Math.round(Number(match[3]))),
+    },
+  };
+}
 export async function processImage(
   entry: Entry,
   options: Options,
   signal: AbortSignal,
   onJob: (id: string) => void,
-  progress: (text: string) => void,
+  progress: (step: ProcessingStep) => void,
 ) {
   const { file_id } = await request<{ file_id: string }>("/files", {
     method: "POST",
@@ -73,6 +96,7 @@ export async function processImage(
     body: entry.file,
     signal,
   });
+  progress({ stage: "prepare" });
   const init = {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -83,28 +107,21 @@ export async function processImage(
     "/explain",
     init,
   );
-  let job = await request<Job>("/jobs", init);
+  signal.throwIfAborted();
+  // Once submitted, collect the job ID even if the user cancels during the response.
+  let job = await request<Job>("/jobs", {
+    ...init,
+    signal: AbortSignal.timeout(15000),
+  });
   onJob(job.job_id);
+  signal.throwIfAborted();
   while (job.status === "queued" || job.status === "running") {
-    const pass = /pass (\d+)\/(\d+) ([\d.]+)%/.exec(job.progress);
-    progress(
-      job.status === "queued"
-        ? "GPU 대기 중…"
-        : "업스케일 중…" +
-            (pass
-              ? " " +
-                Math.round(
-                  (100 * (Number(pass[1]) - 1 + Number(pass[3]) / 100)) /
-                    Number(pass[2]),
-                ) +
-                "%"
-              : ""),
-    );
+    progress(jobStep(job));
     await new Promise((resolve) => setTimeout(resolve, 320));
     job = await request<Job>("/jobs/" + job.job_id, { signal });
   }
   if (job.status !== "done") throw Error(job.error || "작업이 중단되었습니다.");
-  progress("결과를 가져오는 중…");
+  progress({ stage: "receive" });
   const blob = await (await response(job.result, { signal })).blob();
   signal.throwIfAborted();
   const suffix =

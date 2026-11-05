@@ -2,7 +2,13 @@ import { useState } from "react";
 import { Button } from "@heroui/react/button";
 import { Icon } from "./icons";
 import { save, type Entry } from "./files";
-export function Preview({ entry }: { entry: Entry }) {
+export function Preview({
+  entry,
+  showSave,
+}: {
+  entry: Entry;
+  showSave: boolean;
+}) {
   const [lens, setLens] = useState(false),
     [actual, setActual] = useState(false),
     [split, setSplit] = useState(50);
@@ -104,7 +110,7 @@ export function Preview({ entry }: { entry: Entry }) {
             px
           </small>
         </div>
-        {out && (
+        {out && showSave && (
           <Button variant="secondary" onPress={() => save(out)}>
             <Icon name="download" />
             결과 저장

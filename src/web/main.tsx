@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@heroui/react/button";
 import { Icon } from "./icons";
 import { Settings } from "./settings";
+import { RunActions, type RunState } from "./run-actions";
 import { Preview } from "./preview";
 import type { Model } from "./models";
 import type { Options } from "../engine";
@@ -11,6 +12,7 @@ import {
   readFiles,
   release,
   request,
+  save,
   saveZip,
   type Entry,
 } from "./files";
@@ -26,8 +28,9 @@ function App() {
   const [items, setItems] = useState<Entry[]>([]),
     [current, setCurrent] = useState(0),
     [folder, setFolder] = useState(false);
-  const [busy, setBusy] = useState(false),
-    [drag, setDrag] = useState(false),
+  const [runState, setRunState] = useState<RunState>({ kind: "ready" });
+  const busy = runState.kind === "running";
+  const [drag, setDrag] = useState(false),
     [message, setMessage] = useState(""),
     [error, setError] = useState(false),
     [install, setInstall] = useState<Prompt>();
@@ -102,6 +105,7 @@ function App() {
       setCurrent(0);
       setFolder(isFolder);
       setItems(next);
+      setRunState({ kind: "ready" });
       notify("");
     } catch (e) {
       if (seq === ticket.current)
@@ -114,6 +118,7 @@ function App() {
     setCurrent(0);
     setFolder(false);
     setItems([]);
+    setRunState({ kind: "ready" });
     notify("");
   }
   async function run(options: Options) {
@@ -121,14 +126,13 @@ function App() {
     ++ticket.current;
     const controller = new AbortController();
     active.current = controller;
-    setBusy(true);
+    const started = performance.now();
+    notify("");
     const next = items.slice();
     try {
       for (const [index, entry] of next.entries()) {
-        const prefix =
-          next.length > 1 ? "[" + (index + 1) + "/" + next.length + "] " : "";
         setCurrent(index);
-        notify(prefix + "이미지 전송 중…");
+        setRunState({ kind: "running", started, step: { stage: "upload" } });
         const result = await processImage(
           entry,
           options,
@@ -136,20 +140,22 @@ function App() {
           (id) => {
             job.current = id;
           },
-          (p) => notify(prefix + p),
+          (step) => {
+            if (!controller.signal.aborted)
+              setRunState({ kind: "running", started, step });
+          },
         );
         if (entry.result) URL.revokeObjectURL(entry.result.url);
         next[index] = { ...entry, result };
         setItems(next.slice());
         job.current = "";
       }
-      notify("업스케일 완료. 결과를 이 기기에 저장할 수 있습니다.");
+      setRunState({ kind: "done" });
     } catch (e) {
-      notify(
+      setRunState(
         controller.signal.aborted
-          ? "작업을 취소했습니다."
-          : "업스케일 실패 · " + (e as Error).message,
-        !controller.signal.aborted,
+          ? { kind: "cancelled" }
+          : { kind: "failed", reason: (e as Error).message },
       );
     } finally {
       if (job.current)
@@ -159,7 +165,6 @@ function App() {
         }).catch(() => {});
       active.current = null;
       job.current = "";
-      setBusy(false);
     }
   }
   const fileButtons = (
@@ -329,7 +334,11 @@ function App() {
             </div>
           ) : (
             <div className={"loaded " + (drag ? "dragging" : "")}>
-              <Preview key={selected.url} entry={selected} />
+              <Preview
+                key={selected.url}
+                entry={selected}
+                showSave={runState.kind !== "done" || items.length > 1}
+              />
               <div className="file-row">
                 {fileButtons}
                 <Button variant="ghost" isDisabled={busy} onPress={clear}>
@@ -352,15 +361,19 @@ function App() {
                       ))}
                     </select>
                   </label>
-                  <Button
-                    variant="secondary"
-                    isDisabled={busy || !items.some((e) => e.result)}
-                    onPress={() => {
-                      void saveZip(items).catch((e) => notify(String(e), true));
-                    }}
-                  >
-                    ZIP 저장
-                  </Button>
+                  {runState.kind !== "done" && (
+                    <Button
+                      variant="secondary"
+                      isDisabled={busy || !items.some((e) => e.result)}
+                      onPress={() => {
+                        void saveZip(items).catch((e) =>
+                          notify(String(e), true),
+                        );
+                      }}
+                    >
+                      ZIP 저장
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -372,7 +385,6 @@ function App() {
             </div>
           )}
           <div role="status" className={"status " + (error ? "error" : "")}>
-            {busy && <progress aria-label="작업 진행 중" />}
             {message}
           </div>
         </div>
@@ -387,8 +399,29 @@ function App() {
             busy={busy}
             online={!!connected}
             run={run}
-            cancel={() => active.current?.abort()}
-          />
+          >
+            <RunActions
+              state={runState}
+              inputKey={items[0]?.url}
+              name={selected?.name}
+              count={items.length}
+              current={current}
+              online={!!connected}
+              cancel={() => {
+                active.current?.abort();
+                setRunState((previous) =>
+                  previous.kind === "running"
+                    ? { ...previous, step: { stage: "cancel" } }
+                    : previous,
+                );
+              }}
+              download={() => {
+                if (items.length > 1)
+                  void saveZip(items).catch((e) => notify(String(e), true));
+                else if (selected?.result) save(selected.result);
+              }}
+            />
+          </Settings>
         </aside>
       </main>
     </div>

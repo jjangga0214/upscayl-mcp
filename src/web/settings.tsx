@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Button } from "@heroui/react/button";
+import { useState, type ReactNode } from "react";
 import { Icon } from "./icons";
 import { ModelPicker, type Model } from "./models";
 import type { Options } from "../engine";
@@ -37,7 +36,7 @@ type Props = {
   busy: boolean;
   online: boolean;
   run: (options: Options) => void;
-  cancel: () => void;
+  children: ReactNode;
 };
 export function Settings({
   models,
@@ -46,7 +45,7 @@ export function Settings({
   busy,
   online,
   run,
-  cancel,
+  children,
 }: Props) {
   const [model, setModel] = useState("upscayl-standard-4x"),
     [scale, setScale] = useState("4"),
@@ -205,24 +204,7 @@ export function Settings({
           </div>
         </details>
       </fieldset>
-      <div className="run-area">
-        {busy ? (
-          <Button variant="secondary" fullWidth onPress={cancel}>
-            작업 취소
-          </Button>
-        ) : (
-          <Button
-            id="run"
-            type="submit"
-            fullWidth
-            isDisabled={!count || !online}
-          >
-            <Icon name="expand" />
-            {count > 1 ? count + "장 업스케일" : "업스케일"}
-          </Button>
-        )}
-        <p>서버의 작업 파일은 완료 5분 후 삭제됩니다.</p>
-      </div>
+      {children}
     </form>
   );
 }
