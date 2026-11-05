@@ -1,0 +1,26 @@
+{
+  "name": "upscayl-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Use the Upscayl desktop engine from a CLI or a home LAN MCP server",
+  "scripts": {
+    "dev": "bun src/cli.ts",
+    "check": "tsc --noEmit",
+    "test": "bun test",
+    "release:build": "bun scripts/release.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1",
+    "citty": "0.2",
+    "fflate": "0.8",
+    "image-size": "2",
+    "zod": "4"
+  },
+  "devDependencies": {
+    "@types/bun": "1",
+    "typescript": "5"
+  },
+  "license": "MIT",
+  "repository": "github:jjangga0214/upscayl-mcp"
+}

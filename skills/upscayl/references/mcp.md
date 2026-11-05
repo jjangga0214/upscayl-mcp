@@ -1,0 +1,12 @@
+# Connect from another PC
+
+Given a bare IP:port, fetch http://IP:port/manifest.json first. Resolve all relative endpoint paths against that origin. The homepage includes exact configuration for Codex and OpenCode, release downloads and the installable skill.
+
+- Register the manifest's /mcp as a Streamable HTTP server. Codex: `codex mcp add upscayl --url http://IP:port/mcp`. OpenCode: merge `{"mcp":{"upscayl":{"type":"remote","url":"http://IP:port/mcp","oauth":false,"enabled":true}}}` into the existing user configuration. Preserve unrelated entries.
+- Upload bytes as application/octet-stream: `curl --fail --data-binary "@photo.png" -H "Content-Type: application/octet-stream" http://IP:port/files`. Use curl.exe in Windows PowerShell. Read file_id from the JSON response.
+- Use list_models or explain_upscale if needed. Call upscale with file_id and options, e.g. `{"file_id":"...","options":{"scale":2,"format":"png"}}`. For a batch call upscale_batch with file_ids and common options. Preserve the input order when mapping jobs to filenames.
+- Poll get_job with job_id, initially once a second then less often during long runs. If done, GET the result path on the same server with curl --fail --output and verify dimensions locally. The finished job also includes a comparison path with a slider and lens; keep the job and upload until the user has viewed it if a preview was requested. If failed, report the error. Use cancel_job to stop an unwanted job. Images travel as files, outside model context.
+- After saving, DELETE /jobs/{id}, then DELETE /files/{id} to free space. Uploads and finished jobs expire after about one hour. A restart discards job IDs. The default service accepts uploads up to 32 MiB, 32 job records, and at most 96 megapixels per intermediate image. The GPU handles one server job at a time.
+- For an ordinary remote file or folder, the remote CLI handles this entire upload, poll, save and cleanup sequence with --server. Use this when MCP registration is unavailable or the user wants a shell command.
+
+The server accepts numeric private LAN access without authentication. Use it on a trusted home network. Its server-management commands are local to the Mac.
