@@ -1,26 +1,20 @@
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Icon } from "./icons";
 import { t } from "./language";
 
-const narrow = window.matchMedia("(max-width: 699px)");
-
 export function Sidebar({
   version,
-  ready,
+  compact,
+  onPanelToggle,
   children,
   navigation,
 }: {
   version?: string;
-  ready: boolean;
+  compact: boolean;
+  onPanelToggle: (open: boolean) => void;
   children: ReactNode;
   navigation: ReactNode;
 }) {
-  const [compact, setCompact] = useState(narrow.matches);
-  useEffect(() => {
-    const resize = () => setCompact(narrow.matches);
-    narrow.addEventListener("change", resize);
-    return () => narrow.removeEventListener("change", resize);
-  }, []);
   return (
     <aside className="sidebar" aria-label={t("Upscale settings")}>
       <div className="sidebar-rail">
@@ -32,13 +26,16 @@ export function Sidebar({
         >
           <Icon name="settings" />
           {t("Settings")}
-          {ready && <span className="ready-ripple" aria-hidden="true" />}
         </button>
       </div>
       <div
         id="settings-panel"
         className="sidebar-panel"
         popover={compact ? "auto" : undefined}
+        onToggle={(e) => {
+          if (e.target === e.currentTarget)
+            onPanelToggle(e.currentTarget.matches(":popover-open"));
+        }}
       >
         <div className="sidebar-heading">
           <div className="brand">

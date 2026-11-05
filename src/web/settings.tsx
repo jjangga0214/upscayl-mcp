@@ -58,7 +58,17 @@ export function Settings({
   const num = (form: FormData, key: string) => Number(form.get(key));
   return (
     <form
+      id="upscale-settings"
       className="settings"
+      onInvalidCapture={(e) => {
+        // A submit from the canvas must reveal any setting that needs correction.
+        const panel = e.currentTarget.closest<HTMLElement>("[popover]");
+        if (panel && !panel.matches(":popover-open")) panel.showPopover();
+        if (e.target instanceof HTMLInputElement) {
+          const details = e.target.closest("details");
+          if (details) details.open = true;
+        }
+      }}
       onSubmit={(e) => {
         e.preventDefault();
         if (!count || busy || !online) return;

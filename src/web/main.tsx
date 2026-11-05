@@ -20,11 +20,24 @@ import {
 } from "./files";
 
 const root = document.getElementById("root")!;
+const compactLayout = window.matchMedia(
+  "(max-width: 699px), (pointer: coarse) and (max-height: 500px) and (max-width: 1000px)",
+);
 type Prompt = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<unknown>;
 };
 function App() {
+  const [compact, setCompact] = useState(compactLayout.matches);
+  const [panelOpen, setPanelOpen] = useState(false);
+  useEffect(() => {
+    const resize = () => {
+      setCompact(compactLayout.matches);
+      setPanelOpen(false);
+    };
+    compactLayout.addEventListener("change", resize);
+    return () => compactLayout.removeEventListener("change", resize);
+  }, []);
   const [models, setModels] = useState<Model[]>([]),
     [connected, setConnected] = useState<boolean | null>(null);
   const [items, setItems] = useState<Entry[]>([]),
@@ -172,6 +185,30 @@ function App() {
       job.current = "";
     }
   }
+  const dockActions = compact && !panelOpen && items.length > 0;
+  const runActions = (
+    <RunActions
+      state={runState}
+      inputKey={items[0]?.url}
+      name={selected?.name}
+      count={items.length}
+      current={current}
+      online={!!connected}
+      cancel={() => {
+        active.current?.abort();
+        setRunState((previous) =>
+          previous.kind === "running"
+            ? { ...previous, step: { stage: "cancel" } }
+            : previous,
+        );
+      }}
+      download={() => {
+        if (items.length > 1)
+          void saveZip(items).catch((e) => notify(String(e), true));
+        else if (selected?.result) save(selected.result);
+      }}
+    />
+  );
   const fileButtons = (
     <div className="file-buttons flex flex-wrap items-center justify-center gap-2">
       <Button
@@ -201,7 +238,8 @@ function App() {
     >
       <Sidebar
         version={root.dataset.desktopVersion}
-        ready={!!selected && !busy && runState.kind === "ready" && !!connected}
+        compact={compact}
+        onPanelToggle={setPanelOpen}
         navigation={
           <nav className="sidebar-nav">
             <span className={"connection " + (connected ? "online" : "")}>
@@ -239,27 +277,7 @@ function App() {
           online={!!connected}
           run={run}
         >
-          <RunActions
-            state={runState}
-            inputKey={items[0]?.url}
-            name={selected?.name}
-            count={items.length}
-            current={current}
-            online={!!connected}
-            cancel={() => {
-              active.current?.abort();
-              setRunState((previous) =>
-                previous.kind === "running"
-                  ? { ...previous, step: { stage: "cancel" } }
-                  : previous,
-              );
-            }}
-            download={() => {
-              if (items.length > 1)
-                void saveZip(items).catch((e) => notify(String(e), true));
-              else if (selected?.result) save(selected.result);
-            }}
-          />
+          {dockActions ? null : runActions}
         </Settings>
       </Sidebar>
       <main
@@ -278,144 +296,151 @@ function App() {
           void load(Array.from(e.dataTransfer.files));
         }}
       >
-        <input
-          ref={picker}
-          id="files"
-          type="file"
-          accept=".png,.jpg,.jpeg,.jfif,.webp"
-          multiple
-          hidden
-          onChange={(e) => {
-            void load(Array.from(e.target.files || []));
-            e.target.value = "";
-          }}
-        />
-        <input
-          ref={directory}
-          id="directory"
-          type="file"
-          {...{ webkitdirectory: "" }}
-          multiple
-          hidden
-          onChange={(e) => {
-            void load(Array.from(e.target.files || []), true);
-            e.target.value = "";
-          }}
-        />
-        {!selected ? (
-          <div className="dropzone">
-            <div className="drop-content">
-              <svg
-                className="drop-graphic"
-                viewBox="0 0 76 76"
-                fill="none"
-                aria-hidden="true"
-              >
-                <rect
-                  x="7"
-                  y="17"
-                  width="48"
-                  height="39"
-                  rx="7"
-                  transform="rotate(-12 7 17)"
-                  fill="#263a54"
-                  stroke="#567391"
-                  strokeWidth="1.6"
-                />
-                <rect
-                  x="18"
-                  y="23"
-                  width="47"
-                  height="37"
-                  rx="6"
-                  fill="#1e3049"
-                  stroke="#92b5df"
-                  strokeWidth="1.7"
-                />
-                <circle cx="31" cy="34" r="4" fill="#88add8" />
-                <path
-                  d="m20 54 12-12 8 7 9-11 13 15"
-                  stroke="#89acd4"
-                  strokeWidth="2.4"
-                  strokeLinejoin="round"
-                />
-                <circle
-                  cx="61"
-                  cy="57"
-                  r="12"
-                  fill="#9fc9ff"
-                  stroke="#1a293c"
-                  strokeWidth="3"
-                />
-                <path
-                  d="M61 62V52m-4 4 4-4 4 4"
-                  stroke="#203654"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <h2>{drag ? t("Drop to open") : t("Drop images here")}</h2>
-              <p>
-                PNG, JPG, WebP <span>·</span> {t("Up to 32 MiB per file")}
-              </p>
-              {fileButtons}
-            </div>
-          </div>
-        ) : (
-          <div className="loaded">
-            <Preview
-              key={selected.url}
-              entry={selected}
-              busy={busy}
-              showSave={runState.kind !== "done" || items.length > 1}
-            />
-            <div className="file-row">
-              {fileButtons}
-              <Button variant="ghost" isDisabled={busy} onPress={clear}>
-                {t("Clear")}
-              </Button>
-            </div>
-            {items.length > 1 && (
-              <div className="batch">
-                <label>
-                  {t("Files")}
-                  <select
-                    value={current}
-                    disabled={busy}
-                    onChange={(e) => setCurrent(+e.target.value)}
-                  >
-                    {items.map((f, i) => (
-                      <option key={f.url} value={i}>
-                        {i + 1}. {f.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {runState.kind !== "done" && (
-                  <Button
-                    variant="secondary"
-                    isDisabled={busy || !items.some((e) => e.result)}
-                    onPress={() => {
-                      void saveZip(items).catch((e) => notify(String(e), true));
-                    }}
-                  >
-                    {t("Save ZIP")}
-                  </Button>
-                )}
+        <div className="canvas-scroll">
+          <input
+            ref={picker}
+            id="files"
+            type="file"
+            accept=".png,.jpg,.jpeg,.jfif,.webp"
+            multiple
+            hidden
+            onChange={(e) => {
+              void load(Array.from(e.target.files || []));
+              e.target.value = "";
+            }}
+          />
+          <input
+            ref={directory}
+            id="directory"
+            type="file"
+            {...{ webkitdirectory: "" }}
+            multiple
+            hidden
+            onChange={(e) => {
+              void load(Array.from(e.target.files || []), true);
+              e.target.value = "";
+            }}
+          />
+          {!selected ? (
+            <div className="dropzone">
+              <div className="drop-content">
+                <svg
+                  className="drop-graphic"
+                  viewBox="0 0 76 76"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <rect
+                    x="7"
+                    y="17"
+                    width="48"
+                    height="39"
+                    rx="7"
+                    transform="rotate(-12 7 17)"
+                    fill="#263a54"
+                    stroke="#567391"
+                    strokeWidth="1.6"
+                  />
+                  <rect
+                    x="18"
+                    y="23"
+                    width="47"
+                    height="37"
+                    rx="6"
+                    fill="#1e3049"
+                    stroke="#92b5df"
+                    strokeWidth="1.7"
+                  />
+                  <circle cx="31" cy="34" r="4" fill="#88add8" />
+                  <path
+                    d="m20 54 12-12 8 7 9-11 13 15"
+                    stroke="#89acd4"
+                    strokeWidth="2.4"
+                    strokeLinejoin="round"
+                  />
+                  <circle
+                    cx="61"
+                    cy="57"
+                    r="12"
+                    fill="#9fc9ff"
+                    stroke="#1a293c"
+                    strokeWidth="3"
+                  />
+                  <path
+                    d="M61 62V52m-4 4 4-4 4 4"
+                    stroke="#203654"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <h2>{drag ? t("Drop to open") : t("Drop images here")}</h2>
+                <p>
+                  PNG, JPG, WebP <span>·</span> {t("Up to 32 MiB per file")}
+                </p>
+                {fileButtons}
               </div>
-            )}
+            </div>
+          ) : (
+            <div className="loaded">
+              <Preview
+                key={selected.url}
+                entry={selected}
+                busy={busy}
+                showSave={runState.kind !== "done" || items.length > 1}
+              />
+              <div className="file-row">
+                {fileButtons}
+                <Button variant="ghost" isDisabled={busy} onPress={clear}>
+                  {t("Clear")}
+                </Button>
+              </div>
+              {items.length > 1 && (
+                <div className="batch">
+                  <label>
+                    {t("Files")}
+                    <select
+                      value={current}
+                      disabled={busy}
+                      onChange={(e) => setCurrent(+e.target.value)}
+                    >
+                      {items.map((f, i) => (
+                        <option key={f.url} value={i}>
+                          {i + 1}. {f.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {runState.kind !== "done" && (
+                    <Button
+                      variant="secondary"
+                      isDisabled={busy || !items.some((e) => e.result)}
+                      onPress={() => {
+                        void saveZip(items).catch((e) =>
+                          notify(String(e), true),
+                        );
+                      }}
+                    >
+                      {t("Save ZIP")}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          {connected === false && (
+            <div className="notice">
+              {t("Unable to reach the host. Check your network connection.")}{" "}
+              <button onClick={() => retry.current()}>{t("Reconnect")}</button>
+            </div>
+          )}
+          <div role="status" className={"status " + (error ? "error" : "")}>
+            {message}
           </div>
-        )}
-        {connected === false && (
-          <div className="notice">
-            {t("Unable to reach the host. Check your network connection.")}{" "}
-            <button onClick={() => retry.current()}>{t("Reconnect")}</button>
-          </div>
-        )}
-        <div role="status" className={"status " + (error ? "error" : "")}>
-          {message}
         </div>
+        {dockActions && (
+          <footer className="mobile-actions">{runActions}</footer>
+        )}
       </main>
     </div>
   );

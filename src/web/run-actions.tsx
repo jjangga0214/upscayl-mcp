@@ -153,6 +153,7 @@ export function RunActions({
                 id="run"
                 variant={state.kind === "done" ? "secondary" : "primary"}
                 type="submit"
+                form="upscale-settings"
                 fullWidth
                 isDisabled={!count || !online}
               >
