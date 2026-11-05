@@ -73,7 +73,6 @@ export async function remoteFile(
       signal,
     })
   ).json();
-  const file = base + "/files/" + upload.file_id;
   let jobUrl: string | undefined;
   try {
     const request = {
@@ -114,19 +113,11 @@ export async function remoteFile(
     }
   } finally {
     // A local cancellation also releases the remote GPU.
-    if (jobUrl) {
+    if (jobUrl && signal.aborted) {
       await fetch(jobUrl + "/cancel", {
         method: "POST",
         signal: AbortSignal.timeout(1500),
       }).catch(() => {});
-      await fetch(jobUrl, {
-        method: "DELETE",
-        signal: AbortSignal.timeout(1500),
-      }).catch(() => {});
     }
-    await fetch(file, {
-      method: "DELETE",
-      signal: AbortSignal.timeout(1500),
-    }).catch(() => {});
   }
 }

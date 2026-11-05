@@ -9,6 +9,7 @@ import cli from "../skills/upscayl/references/cli.md" with { type: "text" };
 import mcp from "../skills/upscayl/references/mcp.md" with { type: "text" };
 import behavior from "../skills/upscayl/references/behavior.md" with { type: "text" };
 import { version } from "../package.json";
+import { CACHE_MS } from "./jobs";
 
 export const repo = "https://github.com/jjangga0214/upscayl-mcp";
 const skillFiles = {
@@ -46,16 +47,34 @@ export async function installSkill() {
   const dest = join(root, "upscayl");
   await mkdir(root, { recursive: true });
   if (existsSync(dest)) {
+    // Accept only exact official 0.1.0 files during this upgrade.
+    const previous: Record<string, string> = {
+      "SKILL.md":
+        "ec14805f1b8ff3fed81f149023193ef64b91802ac208693759dc9f2dc8cdfd18",
+      "references/mcp.md":
+        "df41aa69f7ced7896c259acb36830f50830741e723be4c6bec0c62af131cc0ef",
+    };
+    const updates: Array<[string, string]> = [];
     for (const [k, v] of Object.entries(skillFiles)) {
-      if (
-        !(await Bun.file(join(dest, k)).exists()) ||
-        (await Bun.file(join(dest, k)).text()) !== v
-      )
+      const file = Bun.file(join(dest, k));
+      const current = (await file.exists()) ? await file.text() : undefined;
+      if (current === v) continue;
+      if (current === undefined || digest(strToU8(current)) !== previous[k])
         throw Error(
           "Skill already exists with different content at " +
             dest +
             ". Review it before replacing.",
         );
+      updates.push([k, v]);
+    }
+    for (const [k, value] of updates) {
+      const next = join(dest, k + "." + crypto.randomUUID());
+      try {
+        await Bun.write(next, value);
+        await rename(next, join(dest, k));
+      } finally {
+        await rm(next, { force: true });
+      }
     }
     return dest;
   }
@@ -96,6 +115,10 @@ export function manifest(base: string) {
     name: "upscayl-mcp",
     version,
     repository: repo,
+    app: base + "/",
+    setup: base + "/setup",
+    manifest: base + "/manifest.json",
+    cache_ttl_seconds: CACHE_MS / 1000,
     transport: "streamable-http",
     authentication: "none (trusted home LAN)",
     mcp: base + "/mcp",
@@ -118,6 +141,6 @@ export function manifest(base: string) {
       },
     },
     instructions:
-      "Extract the skill ZIP (upscayl/SKILL.md and references) into ~/.agents/skills. The executable ZIP contains the CLI and MCP server. Only the Mac host needs Upscayl. POST image bytes to /files, then call upscale with file_id and options, poll get_job, GET its result path.",
+      "Extract the skill ZIP (upscayl/SKILL.md and references) into ~/.agents/skills. The executable ZIP contains the CLI and MCP server. Only the Mac host needs Upscayl. POST image bytes to /files, then call upscale with file_id and options, poll get_job, download its result within five minutes of completion. Reads do not renew the cache.",
   };
 }

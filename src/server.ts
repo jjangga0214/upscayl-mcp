@@ -2,6 +2,7 @@ import { rm } from "node:fs/promises";
 import { engine, optionsSchema } from "./engine";
 import { Jobs, maxUpload } from "./jobs";
 import { handleMcp, models } from "./mcp";
+import { studio } from "./studio";
 import { home } from "./home";
 import { comparison } from "./compare";
 import { download, manifest } from "./assets";
@@ -36,6 +37,7 @@ export async function serve(host: string, port: number) {
         return text("Unrecognized LAN address, Host or Origin.", 403);
       const p = url.pathname;
       try {
+        if (Date.now() >= jobs.nextExpiry) await jobs.expire();
         if (p === "/mcp") {
           if (req.method !== "POST")
             return new Response(null, {
@@ -45,7 +47,18 @@ export async function serve(host: string, port: number) {
           return await handleMcp(req, jobs);
         }
         if (req.method === "GET") {
-          if (p === "/")
+          if (
+            p === "/" &&
+            req.headers.get("accept")?.split(",")[0].split(";")[0].trim() ===
+              "application/json"
+          )
+            return Response.json(info, { headers: { Vary: "Accept" } });
+          const page = studio(p);
+          if (page) {
+            page.headers.set("Vary", "Accept");
+            return page;
+          }
+          if (p === "/setup")
             return new Response(home(info), {
               headers: {
                 "Content-Type": "text/html; charset=utf-8",
@@ -119,7 +132,9 @@ export async function serve(host: string, port: number) {
           if (req.method === "GET" && action === "original") {
             const source = jobs.uploads.get(job.fileId);
             return source
-              ? new Response(Bun.file(source.path))
+              ? new Response(Bun.file(source.path), {
+                  headers: { "Cache-Control": "no-store" },
+                })
               : text("Source released.", 404);
           }
           if (
@@ -136,7 +151,9 @@ export async function serve(host: string, port: number) {
           if (req.method === "GET" && action === "result") {
             if (job.status !== "done")
               return text("Result not available.", 409);
-            return new Response(Bun.file(jobs.resultPath(job)));
+            return new Response(Bun.file(jobs.resultPath(job)), {
+              headers: { "Cache-Control": "no-store" },
+            });
           }
         }
         return text("Unknown route.", 404);
@@ -145,16 +162,11 @@ export async function serve(host: string, port: number) {
       }
     },
   });
-  const timer = setInterval(
-    () => void jobs.expire().catch(console.error),
-    60_000,
-  );
   console.log(base);
   let stopping = false;
   const stop = async () => {
     if (stopping) return;
     stopping = true;
-    clearInterval(timer);
     await web.stop(true);
     for (const id of jobs.jobs.keys()) jobs.cancel(id);
     await rm(jobs.root, { recursive: true, force: true });

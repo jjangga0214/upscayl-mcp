@@ -24,7 +24,7 @@ upscayl-mcp server autostart on
 upscayl-mcp server status
 ```
 
-`status`에 나오는 **http://IP:포트/** 주소를 다른 PC의 에이전트에게 전달하세요. 이 주소는 연결 방법, 현재 버전의 스킬 ZIP, 플랫폼별 CLI와 MCP 서버 ZIP을 제공합니다. `/manifest.json`은 같은 정보의 기계 판독용 버전입니다. 압축 파일과 SHA256SUMS를 호스트 실행 파일 옆에 두거나 UPSCAYL_DIST에 해당 폴더를 지정하면 LAN에서 직접 내려받을 수 있습니다. 없는 실행 파일은 같은 버전 GitHub Release로 연결합니다. 스킬은 서버에 내장되어 있습니다.
+`status`에 나오는 **http://IP:포트/** 주소를 다른 PC의 에이전트에게 전달하세요. 브라우저에서는 이 주소에 이미지 작업실이 열립니다. 사진을 끌어놓거나 폴더를 열고, 모델과 출력 옵션을 선택해 확대·비교·저장할 수 있습니다. 여러 결과는 ZIP으로 저장합니다. 연결 방법과 다운로드는 **연결 및 설치**(`/setup`)에 있습니다. `/manifest.json`은 같은 정보의 기계 판독용 버전입니다. 압축 파일과 SHA256SUMS를 호스트 실행 파일 옆에 두거나 UPSCAYL_DIST에 해당 폴더를 지정하면 LAN에서 직접 내려받을 수 있습니다. 없는 실행 파일은 같은 버전 GitHub Release로 연결합니다. 스킬은 서버에 내장되어 있습니다.
 
 `server start/stop`은 현재 실행 상태, `server autostart on/off`는 다음 사용자 로그인 시의 동작을 바꿉니다. LaunchAgent는 로그인 후 실행됩니다. 맥이 잠들면 작업 요청도 대기해야 합니다. 기본 포트는 8765이며 맥의 활성 사설 IPv4에 바인딩합니다. 주소나 포트를 바꾸려면 먼저 중지하고 `server start --host <LAN-IP> --port <PORT>`를 사용합니다. 공유기의 DHCP 예약을 쓰면 재부팅 후에도 같은 주소를 전달할 수 있습니다.
 
@@ -54,3 +54,9 @@ bun run release:build
 맥에 기본 모델이 설치되어 있으면 테스트가 실제 GPU로 실행됩니다. 앱과 같은 인자로 생성한 PNG/JPEG/WebP와 래퍼의 결과 바이트를 비교하고, SDK 클라이언트에서 서버에 연결해 파일 업로드부터 결과 다운로드까지 확인합니다. `release:build`는 Bun과 zip을 사용해 dist에 각 플랫폼의 ZIP, 스킬 ZIP, SHA256SUMS를 생성합니다.
 
 이 저장소는 독립적인 통합 도구입니다. Upscayl 본체와 모델은 호스트의 앱 설치본에서 사용하며 각각의 원래 라이선스를 따릅니다. [공식 엔진](https://github.com/upscayl/upscayl-ncnn) · [공식 앱 인자 구성](https://github.com/upscayl/upscayl/blob/v2.15.0/electron/utils/get-arguments.ts)
+
+## 작업 파일 보관
+
+웹과 MCP가 사용하는 서버 캐시는 완료·실패·취소 시점부터 5분 후 예약 삭제합니다. 재조회나 다운로드로 시간이 연장되지 않습니다. 작업에서 사용하지 않은 업로드는 업로드 후 5분에 삭제되며, 여러 작업에서 같은 업로드를 사용할 때는 마지막 작업의 기한까지 유지됩니다. 결과는 브라우저 탭의 메모리로 받은 후 서버 만료와 관계없이 비교·저장할 수 있습니다. 탭을 닫기 전에 보관할 결과를 다운로드하세요. 로컬 CLI 또는 클라이언트가 직접 저장한 파일은 해당 기기에 남습니다.
+
+작업실 예제는 [미국 국립공원관리청의 레이니어 산 사진](https://commons.wikimedia.org/wiki/File:Mount_Rainier_and_lake_reflection.jpg)을 축소한 이미지와 Upscayl Standard 4×의 실제 출력입니다. 사진은 퍼블릭 도메인입니다.

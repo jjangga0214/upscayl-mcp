@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, rm, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -10,11 +10,12 @@ import {
   type Options,
 } from "./engine";
 
-const hour = 3600_000;
+export const CACHE_MS = 5 * 60_000;
 export const maxUpload = 32 * 1024 * 1024;
 type Upload = {
   path: string;
   size: Awaited<ReturnType<typeof inspect>>;
+  bytes: number;
   touched: number;
 };
 type Job = {
@@ -23,6 +24,7 @@ type Job = {
   options: Options;
   status: "queued" | "running" | "done" | "failed" | "cancelled";
   progress: string;
+  reservedBytes: number;
   updated: number;
   error?: string;
   controller: AbortController;
@@ -34,9 +36,12 @@ export class Jobs {
   private busy = false;
   private receiving = 0;
   private activeId?: string;
+  private wake?: ReturnType<typeof setTimeout>;
+  nextExpiry = Infinity;
   constructor(
     readonly root: string,
     readonly backend: Engine,
+    readonly ttl = CACHE_MS,
   ) {}
   static async create(backend: Engine) {
     const parent = join(
@@ -51,12 +56,11 @@ export class Jobs {
       try {
         process.kill(Number(match[1]), 0);
         continue;
-      } catch {
-        /* previous process exited */
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== "ESRCH") continue;
       }
       const path = join(parent, entry.name);
-      if (Date.now() - (await stat(path)).mtimeMs > 24 * hour)
-        await rm(path, { recursive: true, force: true });
+      await rm(path, { recursive: true, force: true });
     }
     return new Jobs(
       await mkdtemp(join(parent, "run-" + process.pid + "-")),
@@ -65,7 +69,15 @@ export class Jobs {
   }
   async receive(req: Request) {
     if (!req.body) throw Error("Missing upload body.");
-    if (this.receiving >= 2 || this.uploads.size + this.receiving >= 40)
+    const held = [...this.uploads.values()].reduce(
+      (bytes, file) => bytes + file.bytes,
+      0,
+    );
+    if (
+      this.receiving >= 2 ||
+      this.uploads.size + this.receiving >= 512 ||
+      held + (this.receiving + 1) * maxUpload > 1024 ** 3
+    )
       throw Error("Upload capacity reached.");
     if (Number(req.headers.get("content-length")) > maxUpload)
       throw Error("Upload exceeds 32 MiB.");
@@ -79,8 +91,14 @@ export class Jobs {
       await Bun.write(tmp, body);
       const size = await inspect(tmp);
       const path = join(this.root, id + "." + size.type);
-      await Bun.write(path, Bun.file(tmp));
-      this.uploads.set(id, { path, size, touched: Date.now() });
+      await rename(tmp, path);
+      this.uploads.set(id, {
+        path,
+        size,
+        bytes: body.byteLength,
+        touched: Date.now(),
+      });
+      this.scheduleExpiry();
       return { file_id: id, ...size };
     } finally {
       this.receiving--;
@@ -89,15 +107,23 @@ export class Jobs {
   }
   explain(id: string, opt: Options) {
     const file = this.uploads.get(id);
-    if (!file) throw Error("Unknown or expired file_id.");
+    if (
+      !file ||
+      (file.touched + this.ttl <= Date.now() && !this.pinnedFiles().has(id))
+    )
+      throw Error("Unknown or expired file_id.");
     return plan(file.size, opt, selectModel(this.backend, opt));
   }
   submit(ids: string[], opt: Options) {
     if (ids.length > 1 && opt.double)
       throw Error("Use single-image mode for Double Upscayl.");
-    if (this.jobs.size + ids.length > 32)
+    const existing = [...this.jobs.values()];
+    if (
+      existing.filter((j) => !this.finished(j)).length + ids.length > 32 ||
+      existing.length + ids.length > 512
+    )
       throw Error("Job capacity reached; download and release completed jobs.");
-    for (const id of ids) {
+    const reservations = ids.map((id) => {
       const result = this.explain(id, opt);
       for (const pass of result.passes) {
         for (const size of [pass.ai, pass.input, pass.output]) {
@@ -110,12 +136,19 @@ export class Jobs {
             );
         }
       }
-    }
-    const accepted = ids.map((fileId) => {
+      return 1024 ** 2 + result.output.width * result.output.height * 5;
+    });
+    const reserved = existing.reduce((n, j) => n + j.reservedBytes, 0);
+    if (reservations.reduce((n, v) => n + v, reserved) > 4 * 1024 ** 3)
+      throw Error(
+        "Result cache is full. Wait for its five-minute expiry or release completed jobs.",
+      );
+    const accepted = ids.map((fileId, index) => {
       const id = crypto.randomUUID();
       const job: Job = {
         id,
         fileId,
+        reservedBytes: reservations[index],
         options: opt,
         status: "queued",
         progress: "",
@@ -126,6 +159,7 @@ export class Jobs {
       this.jobs.set(id, job);
       return this.view(id);
     });
+    this.scheduleExpiry();
     void this.drain();
     return accepted;
   }
@@ -140,6 +174,9 @@ export class Jobs {
       status: job.status,
       progress: job.progress,
       error: job.error,
+      expires_at: this.finished(job)
+        ? new Date(job.updated + this.ttl).toISOString()
+        : undefined,
       comparison:
         job.status === "done" ? "/jobs/" + id + "/compare" : undefined,
       result: job.status === "done" ? "/jobs/" + id + "/result" : undefined,
@@ -151,7 +188,7 @@ export class Jobs {
     if (job.status === "queued" || job.status === "running") {
       job.controller.abort();
       job.status = "cancelled";
-      job.updated = Date.now();
+      this.finish(job);
     }
     return this.view(id);
   }
@@ -166,21 +203,77 @@ export class Jobs {
       throw Error("Wait for the job to finish stopping.");
     await rm(this.resultPath(job), { force: true });
     this.jobs.delete(id);
+    this.scheduleExpiry();
+  }
+  private finished(job: Job) {
+    return (
+      job.id !== this.activeId &&
+      job.status !== "running" &&
+      job.status !== "queued"
+    );
+  }
+  private finish(job: Job) {
+    job.updated = Date.now();
+    if (job.status === "done")
+      job.reservedBytes = Bun.file(this.resultPath(job)).size;
+    else if (this.finished(job)) job.reservedBytes = 0;
+    const upload = this.uploads.get(job.fileId);
+    if (upload) upload.touched = job.updated;
+    this.scheduleExpiry();
+  }
+  private pinnedFiles() {
+    return new Set(
+      [...this.jobs.values()]
+        .filter((job) => !this.finished(job))
+        .map((job) => job.fileId),
+    );
+  }
+  private scheduleExpiry(retryDelay = 0) {
+    clearTimeout(this.wake);
+    const pinned = this.pinnedFiles();
+    const deadlines = [
+      ...[...this.jobs.values()]
+        .filter((job) => this.finished(job))
+        .map((job) => job.updated + this.ttl),
+      ...[...this.uploads.entries()]
+        .filter(([id]) => !pinned.has(id))
+        .map(([, file]) => file.touched + this.ttl),
+    ];
+    this.nextExpiry = Math.min(...deadlines);
+    if (Number.isFinite(this.nextExpiry))
+      this.wake = setTimeout(
+        () => {
+          void this.expire().catch((err) =>
+            console.error("Cache cleanup:", err),
+          );
+        },
+        Math.max(retryDelay, this.nextExpiry - Date.now(), 1),
+      ).unref();
   }
   async expire() {
-    for (const [id, j] of this.jobs) {
-      if (
-        Date.now() - j.updated > hour &&
-        !["queued", "running"].includes(j.status)
-      )
-        await this.release(id);
-    }
-    const inUse = new Set([...this.jobs.values()].map((j) => j.fileId));
-    for (const [id, file] of this.uploads) {
-      if (Date.now() - file.touched > hour && !inUse.has(id)) {
-        this.uploads.delete(id);
-        await rm(file.path, { force: true });
+    const now = Date.now(),
+      pinned = this.pinnedFiles();
+    const pending: Promise<void>[] = [];
+    for (const [id, job] of this.jobs)
+      if (this.finished(job) && job.updated + this.ttl <= now) {
+        pending.push(
+          rm(this.resultPath(job), { force: true }).then(() => {
+            this.jobs.delete(id);
+          }),
+        );
       }
+    for (const [id, file] of this.uploads)
+      if (!pinned.has(id) && file.touched + this.ttl <= now) {
+        pending.push(
+          rm(file.path, { force: true }).then(() => {
+            this.uploads.delete(id);
+          }),
+        );
+      }
+    try {
+      await Promise.all(pending);
+    } finally {
+      this.scheduleExpiry(100);
     }
   }
   private async drain() {
@@ -216,8 +309,8 @@ export class Jobs {
           ).replaceAll(this.root, "<job>");
         } finally {
           clearTimeout(timer);
-          job.updated = Date.now();
           this.activeId = undefined;
+          this.finish(job);
         }
       }
     } finally {

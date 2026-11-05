@@ -47,6 +47,20 @@ test.skipIf(!ready)(
       );
       const manifest = await (await fetch(base + "/manifest.json")).json();
       expect(manifest.mcp).toBe(base + "/mcp");
+      expect(manifest.cache_ttl_seconds).toBe(300);
+      expect(
+        await (
+          await fetch(base, { headers: { Accept: "application/json" } })
+        ).json(),
+      ).toEqual(manifest);
+      expect(await (await fetch(manifest.setup)).text()).toContain(
+        manifest.codex,
+      );
+      expect(
+        (await fetch(base + "/studio/sample-4x.png")).headers.get(
+          "Content-Type",
+        ),
+      ).toContain("image/png");
       const bytes = await (await fetch(manifest.skill)).arrayBuffer();
       expect(new Bun.CryptoHasher("sha256").update(bytes).digest("hex")).toBe(
         manifest.skill_sha256,
@@ -93,6 +107,9 @@ test.skipIf(!ready)(
         await Bun.sleep(100);
       }
       expect(result.status).toBe("done");
+      const timeLeft = Date.parse(result.expires_at) - Date.now();
+      expect(timeLeft).toBeGreaterThan(290000);
+      expect(timeLeft).toBeLessThanOrEqual(300000);
       const image = Buffer.from(
         await (await fetch(base + result.result)).arrayBuffer(),
       );
