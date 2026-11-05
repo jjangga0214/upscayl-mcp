@@ -24,11 +24,27 @@ upscayl-mcp server autostart on
 upscayl-mcp server status
 ```
 
-`status`에 나오는 **http://IP:포트/** 주소를 다른 PC의 에이전트에게 전달하세요. 브라우저에서는 이 주소에 이미지 작업실이 열립니다. 사진을 끌어놓거나 폴더를 열고, 모델과 출력 옵션을 선택해 확대·비교·저장할 수 있습니다. 여러 결과는 ZIP으로 저장합니다. 연결 방법과 다운로드는 **연결 및 설치**(`/setup`)에 있습니다. `/manifest.json`은 같은 정보의 기계 판독용 버전입니다. 압축 파일과 SHA256SUMS를 호스트 실행 파일 옆에 두거나 UPSCAYL_DIST에 해당 폴더를 지정하면 LAN에서 직접 내려받을 수 있습니다. 없는 실행 파일은 같은 버전 GitHub Release로 연결합니다. 스킬은 서버에 내장되어 있습니다.
+`status`에 나오는 **http://IP:포트/** 주소를 다른 PC의 에이전트에게 전달하세요. 브라우저에서는 파일을 끌어놓는 화면이 열립니다. 폴더를 열거나 사진을 선택한 뒤 업스케일하고 원본과 비교해 저장할 수 있습니다. AI 모델 선택창에서 공식 앱의 설명을 한국어로 읽고 모델별 전후 사진을 살펴볼 수 있습니다. 여러 결과는 ZIP으로 저장합니다. 연결 방법과 다운로드는 **연결 및 설치**(`/setup`)에 있습니다. `/manifest.json`은 같은 정보의 기계 판독용 버전입니다. 압축 파일과 SHA256SUMS를 호스트 실행 파일 옆에 두거나 UPSCAYL_DIST에 해당 폴더를 지정하면 LAN에서 직접 내려받을 수 있습니다. 없는 실행 파일은 같은 버전 GitHub Release로 연결합니다. 스킬은 서버에 내장되어 있습니다.
 
 `server start/stop`은 현재 실행 상태, `server autostart on/off`는 다음 사용자 로그인 시의 동작을 바꿉니다. LaunchAgent는 로그인 후 실행됩니다. 맥이 잠들면 작업 요청도 대기해야 합니다. 기본 포트는 8765이며 맥의 활성 사설 IPv4에 바인딩합니다. 주소나 포트를 바꾸려면 먼저 중지하고 `server start --host <LAN-IP> --port <PORT>`를 사용합니다. 공유기의 DHCP 예약을 쓰면 재부팅 후에도 같은 주소를 전달할 수 있습니다.
 
 인증 없이 쓰는 신뢰된 홈 LAN 전용입니다. 지정한 숫자 IP의 Host와 브라우저 Origin을 확인합니다. 공유기 포트포워딩으로 인터넷에 공개하지 마세요. 원격 요청은 업로드 ID로만 파일을 지정합니다. 실행 중인 서버가 받는 최대 입력은 32 MiB, 중간 이미지 포함 한 장의 최대 크기는 96 MP·한 변 32,768픽셀입니다.
+
+## 웹 앱과 PWA
+웹 화면은 React, HeroUI, Tailwind CSS로 구성하며 모바일에서는 파일 선택이 설정 위에 나옵니다. 서버가 실행될 때 호스트 앱에서 공식 아이콘, 브랜드 글꼴, 데스크톱 버전, 내장 모델 전후 사진을 읽습니다. 사용자 모델은 서버에 설치된 이름으로 선택합니다.
+
+같은 루트 주소에서 일반 브라우저 탐색은 앱, 일반 터미널 요청은 Markdown 가이드, `Accept: application/json`은 설정 JSON을 받습니다. 알려진 에이전트가 HTML을 요청하면 설치 가이드를 받습니다. 요청 헤더가 브라우저와 같을 때는 구분이 어려우므로 `/app`, `/llms.txt`, `/manifest.json`으로 각각 직접 열 수 있습니다.
+
+PWA는 기기가 신뢰하는 HTTPS 또는 같은 기기의 루프백에서 설치할 수 있습니다. HTTPS를 추가하려면 호스트 LAN IP를 SAN에 포함한 인증서와 키를 준비하고 다음과 같이 설정합니다. 환경 변수의 인증서 경로는 로그인 서비스에도 저장됩니다.
+
+```sh
+upscayl-mcp server stop
+UPSCAYL_TLS_CERT=/path/to/lan.pem UPSCAYL_TLS_KEY=/path/to/lan-key.pem \
+  UPSCAYL_TLS_CA=/path/to/public-root.pem upscayl-mcp server start
+upscayl-mcp server status
+```
+
+HTTPS 포트는 기본 HTTP 포트 + 1입니다. `UPSCAYL_TLS_PORT`로 바꿀 수 있습니다. 개인 CA를 쓴다면 선택 사항인 `UPSCAYL_TLS_CA`에 공개 루트 **인증서**를 지정합니다. 다른 기기에서는 HTTP의 `/setup`에서 공개 인증서를 받은 뒤 호스트 CLI의 SHA-256 지문과 대조하고 신뢰 등록합니다. HTTPS에서 브라우저 설치 메뉴를 사용합니다. 맥의 LAN IP가 바뀌거나 인증서가 만료되면 새 IP에 맞게 인증서를 발급하고 서비스를 다시 시작하세요. 오프라인 캐시에는 앱 화면, 글꼴, 아이콘만 저장합니다. 모델 실행은 호스트 연결이 필요합니다.
 
 ## 다른 PC의 Codex·OpenCode 또는 CLI
 
@@ -59,4 +75,4 @@ bun run release:build
 
 웹과 MCP가 사용하는 서버 캐시는 완료·실패·취소 시점부터 5분 후 예약 삭제합니다. 재조회나 다운로드로 시간이 연장되지 않습니다. 작업에서 사용하지 않은 업로드는 업로드 후 5분에 삭제되며, 여러 작업에서 같은 업로드를 사용할 때는 마지막 작업의 기한까지 유지됩니다. 결과는 브라우저 탭의 메모리로 받은 후 서버 만료와 관계없이 비교·저장할 수 있습니다. 탭을 닫기 전에 보관할 결과를 다운로드하세요. 로컬 CLI 또는 클라이언트가 직접 저장한 파일은 해당 기기에 남습니다.
 
-작업실 예제는 [미국 국립공원관리청의 레이니어 산 사진](https://commons.wikimedia.org/wiki/File:Mount_Rainier_and_lake_reflection.jpg)을 축소한 이미지와 Upscayl Standard 4×의 실제 출력입니다. 사진은 퍼블릭 도메인입니다.
+이전 버전과 호환되는 샘플 주소의 사진은 [미국 국립공원관리청의 레이니어 산 사진](https://commons.wikimedia.org/wiki/File:Mount_Rainier_and_lake_reflection.jpg)을 축소한 이미지와 Upscayl Standard 4×의 실제 출력입니다. 사진은 퍼블릭 도메인입니다.

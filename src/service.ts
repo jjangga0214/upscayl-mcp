@@ -94,8 +94,19 @@ export async function service(
   if (action === "autostart" && toggle === "off")
     await rm(persistent, { force: true });
   if (action === "start" || (action === "autostart" && toggle === "on")) {
-    for (const key of ["UPSCAYL_APP", "UPSCAYL_MODELS_DIR", "UPSCAYL_DIST"])
+    for (const key of [
+      "UPSCAYL_APP",
+      "UPSCAYL_MODELS_DIR",
+      "UPSCAYL_DIST",
+      "UPSCAYL_TLS_CERT",
+      "UPSCAYL_TLS_KEY",
+      "UPSCAYL_TLS_CA",
+    ])
       if (process.env[key]) cfg.env[key] = resolve(process.env[key]!);
+    if (process.env.UPSCAYL_TLS_PORT)
+      cfg.env.UPSCAYL_TLS_PORT = String(
+        portNumber(process.env.UPSCAYL_TLS_PORT),
+      );
     await mkdir(logDir, { recursive: true });
     await atomic(config, JSON.stringify(cfg));
     const definition = plist(cfg);
@@ -113,6 +124,7 @@ export async function service(
       return undefined;
     }
   })();
+  let pwa: string | undefined, ca_sha256: string | undefined;
   const health = async () => {
     if (!address) return false;
     try {
@@ -123,6 +135,8 @@ export async function service(
       const pid = ctl("print", target)
         .stdout.toString()
         .match(/^\s*pid = (\d+)$/m)?.[1];
+      pwa = info.pwa;
+      ca_sha256 = info.ca_sha256;
       return r.ok && info.name === "upscayl-mcp" && Number(pid) === info.pid;
     } catch {
       return false;
@@ -149,6 +163,8 @@ export async function service(
     loaded: running,
     autostart: existsSync(persistent),
     url: address,
+    pwa,
+    ca_sha256,
     log: join(logDir, "server.err.log"),
   };
 }

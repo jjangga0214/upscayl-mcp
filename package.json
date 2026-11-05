@@ -1,6 +1,6 @@
 {
   "name": "upscayl-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Use the Upscayl desktop engine from a CLI or a home LAN MCP server",
@@ -8,17 +8,28 @@
     "dev": "bun src/cli.ts",
     "check": "tsc --noEmit",
     "test": "bun test",
-    "release:build": "bun scripts/release.ts"
+    "release:build": "bun run web:build && bun scripts/release.ts",
+    "web:build": "bun scripts/web.ts",
+    "postinstall": "bun run web:build"
   },
   "dependencies": {
+    "@electron/asar": "4",
+    "@heroui/react": "3.2.7",
+    "@heroui/styles": "3.2.7",
     "@modelcontextprotocol/sdk": "1",
     "citty": "0.2",
     "fflate": "0.8",
     "image-size": "2",
+    "react": "19",
+    "react-dom": "19",
     "zod": "4"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "4",
     "@types/bun": "1",
+    "@types/react": "19",
+    "@types/react-dom": "19",
+    "tailwindcss": "4",
     "typescript": "5"
   },
   "license": "MIT",

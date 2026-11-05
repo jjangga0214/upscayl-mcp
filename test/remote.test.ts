@@ -43,8 +43,11 @@ test.skipIf(!ready)(
       }
       expect(ok).toBe(true);
       expect(await (await fetch(base)).text()).toContain(
-        'href="/manifest.json"',
+        base + "/downloads/upscayl-skill.zip",
       );
+      expect(
+        await (await fetch(base, { headers: { Accept: "text/html" } })).text(),
+      ).toContain('href="/manifest.json"');
       const manifest = await (await fetch(base + "/manifest.json")).json();
       expect(manifest.mcp).toBe(base + "/mcp");
       expect(manifest.cache_ttl_seconds).toBe(300);
@@ -61,6 +64,50 @@ test.skipIf(!ready)(
           "Content-Type",
         ),
       ).toContain("image/png");
+      expect(
+        (
+          await fetch(base, {
+            headers: {
+              Accept: "text/html",
+              "User-Agent": "Mozilla/5.0 (compatible; GPTBot/1.2)",
+            },
+          })
+        ).headers.get("Vary"),
+      ).toContain("User-Agent");
+      expect(
+        await (
+          await fetch(base, {
+            headers: { Accept: "text/html", "User-Agent": "GPTBot/1.2" },
+          })
+        ).text(),
+      ).toContain(manifest.codex);
+      expect(
+        (await fetch(base + "/llms.txt")).headers.get("Content-Type"),
+      ).toContain("text/markdown");
+      const webManifest = await (await fetch(base + "/app.webmanifest")).json();
+      expect(webManifest.start_url).toBe("/app");
+      for (const icon of webManifest.icons) {
+        const iconData = Buffer.from(
+          await (await fetch(base + icon.src)).arrayBuffer(),
+        );
+        expect(
+          iconData.readUInt32BE(16) + "x" + iconData.readUInt32BE(20),
+        ).toBe(icon.sizes);
+      }
+      const catalog = await (await fetch(base + "/models")).json();
+      const standard = catalog.find(
+        (m: { id: string }) => m.id === "upscayl-standard-4x",
+      );
+      expect(standard.description).toContain("대부분");
+      if (standard.preview)
+        for (const side of ["before", "after"])
+          expect(
+            (
+              await fetch(
+                base + "/studio/models/" + standard.id + "/" + side + ".webp",
+              )
+            ).headers.get("Content-Type"),
+          ).toBe("image/webp");
       const bytes = await (await fetch(manifest.skill)).arrayBuffer();
       expect(new Bun.CryptoHasher("sha256").update(bytes).digest("hex")).toBe(
         manifest.skill_sha256,

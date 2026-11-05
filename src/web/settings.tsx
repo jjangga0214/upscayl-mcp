@@ -1,0 +1,228 @@
+import { useState } from "react";
+import { Button } from "@heroui/react/button";
+import { Icon } from "./icons";
+import { ModelPicker, type Model } from "./models";
+import type { Options } from "../engine";
+
+function Choices({
+  label,
+  list,
+  value,
+  change,
+}: {
+  label: string;
+  list: [string, string][];
+  value: string;
+  change: (v: string) => void;
+}) {
+  return (
+    <div className="choices" role="group" aria-label={label}>
+      {list.map(([id, name]) => (
+        <button
+          key={id}
+          type="button"
+          aria-pressed={id === value}
+          onClick={() => change(id)}
+        >
+          {name}
+        </button>
+      ))}
+    </div>
+  );
+}
+type Props = {
+  models: Model[];
+  count: number;
+  batch: boolean;
+  busy: boolean;
+  online: boolean;
+  run: (options: Options) => void;
+  cancel: () => void;
+};
+export function Settings({
+  models,
+  count,
+  batch,
+  busy,
+  online,
+  run,
+  cancel,
+}: Props) {
+  const [model, setModel] = useState("upscayl-standard-4x"),
+    [scale, setScale] = useState("4"),
+    [units, setUnits] = useState("scale"),
+    [format, setFormat] = useState("png"),
+    [double, setDouble] = useState(false);
+  const actualModel =
+    models.length && !models.some((m) => m.id === model) ? models[0].id : model;
+  const num = (form: FormData, key: string) => Number(form.get(key));
+  return (
+    <form
+      className="settings"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!count || busy || !online) return;
+        const data = new FormData(e.currentTarget);
+        const gpu = String(data.get("gpu") || "").trim();
+        run({
+          model: actualModel,
+          scale:
+            scale === "custom"
+              ? units === "scale"
+                ? num(data, "custom")
+                : 4
+              : Number(scale),
+          width:
+            scale === "custom" && units === "width"
+              ? num(data, "custom")
+              : undefined,
+          format: format as Options["format"],
+          double: double && !batch,
+          compression: num(data, "compression"),
+          tile: num(data, "tile"),
+          tta: data.has("tta"),
+          gpu: gpu || undefined,
+        });
+      }}
+    >
+      <fieldset disabled={busy}>
+        <ModelPicker
+          models={models}
+          disabled={busy}
+          value={actualModel}
+          change={setModel}
+        />
+        <section>
+          <h2>출력 크기</h2>
+          <Choices
+            label="출력 배율"
+            list={[
+              ["2", "2×"],
+              ["4", "4×"],
+              ["8", "8×"],
+              ["custom", "직접 지정"],
+            ]}
+            value={scale}
+            change={setScale}
+          />
+          {scale === "custom" && (
+            <div className="form-row mt-3">
+              <label>
+                기준
+                <select
+                  value={units}
+                  onChange={(e) => setUnits(e.target.value)}
+                >
+                  <option value="scale">배율</option>
+                  <option value="width">가로 너비</option>
+                </select>
+              </label>
+              <label>
+                {units === "width" ? "가로 (px)" : "배율"}
+                <input
+                  key={units}
+                  name="custom"
+                  type="number"
+                  min="1"
+                  max={units === "width" ? 65535 : 16}
+                  defaultValue={units === "width" ? 1920 : 3}
+                  required
+                />
+              </label>
+            </div>
+          )}
+          <label className="switchrow">
+            <span>Double Upscayl</span>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={!batch && double}
+              disabled={batch}
+              onChange={(e) => setDouble(e.target.checked)}
+            />
+          </label>
+        </section>
+        <section>
+          <h2>저장 형식</h2>
+          <Choices
+            label="저장 형식"
+            value={format}
+            change={setFormat}
+            list={[
+              ["png", "PNG"],
+              ["jpg", "JPG"],
+              ["webp", "WebP"],
+            ]}
+          />
+        </section>
+        <details>
+          <summary>
+            <Icon name="settings" />
+            고급 설정
+            <Icon name="chevron" />
+          </summary>
+          <div className="advanced">
+            <div className="form-row">
+              <label>
+                압축 (0–100)
+                <input
+                  type="number"
+                  name="compression"
+                  defaultValue="0"
+                  min="0"
+                  max="100"
+                  required
+                />
+              </label>
+              <label>
+                타일 크기
+                <input
+                  type="number"
+                  name="tile"
+                  defaultValue="0"
+                  min="0"
+                  max="8192"
+                  required
+                  onChange={(e) => {
+                    const n = e.target.valueAsNumber;
+                    e.target.setCustomValidity(
+                      n > 0 && n < 32
+                        ? "자동(0) 또는 32 이상을 입력하세요."
+                        : "",
+                    );
+                  }}
+                />
+              </label>
+            </div>
+            <label>
+              GPU ID
+              <input name="gpu" placeholder="자동" pattern="[0-9]+(,[0-9]+)*" />
+            </label>
+            <label className="switchrow">
+              <span>TTA 모드</span>
+              <input name="tta" type="checkbox" role="switch" />
+            </label>
+          </div>
+        </details>
+      </fieldset>
+      <div className="run-area">
+        {busy ? (
+          <Button variant="secondary" fullWidth onPress={cancel}>
+            작업 취소
+          </Button>
+        ) : (
+          <Button
+            id="run"
+            type="submit"
+            fullWidth
+            isDisabled={!count || !online}
+          >
+            <Icon name="expand" />
+            {count > 1 ? count + "장 업스케일" : "업스케일"}
+          </Button>
+        )}
+        <p>서버의 작업 파일은 완료 5분 후 삭제됩니다.</p>
+      </div>
+    </form>
+  );
+}

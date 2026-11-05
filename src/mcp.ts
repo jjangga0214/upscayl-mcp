@@ -5,10 +5,12 @@ import { version } from "../package.json";
 import { optionsSchema } from "./engine";
 import type { Jobs } from "./jobs";
 
+import { describeModel } from "./catalog";
 export function models(jobs: Jobs) {
   return [...jobs.backend.models.values()].map(({ id, nativeScale }) => ({
     id,
     nativeScale,
+    ...describeModel(id),
   }));
 }
 export async function handleMcp(req: Request, jobs: Jobs) {
