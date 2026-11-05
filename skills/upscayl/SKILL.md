@@ -1,12 +1,12 @@
 ---
 name: upscayl
-description: Enlarge, enhance or batch-process local images with the installed Upscayl desktop engine or a home LAN Upscayl MCP server. Use for requests such as 사진 확대, 이미지 업스케일, Double Upscayl and exact output width.
+description: Upscale images on this device using a remote Upscayl MCP server on the home LAN. Use for 사진 업스케일, folder batches, Double Upscayl or connecting a client to a supplied server address.
 ---
 
-# Upscayl
+# Upscayl client
 
-Use the same engine and model files as Upscayl Desktop on the host Mac. Keep the input and write the requested result where the user can open it.
+Use the connected Upscayl MCP server. If the user supplies an IP and port, read its `/manifest.json` for the MCP endpoint and client setup. The requesting device owns the source and the saved result.
 
-- On the Mac, use `upscayl-mcp upscale "photo.png"` (Standard 4× PNG). A folder selects desktop batch mode. See [CLI](references/cli.md) for paths, formats, overwrite, remote CLI and service control.
-- On another computer, start at the supplied `http://IP:port/`. People can use the web studio at that address. Read /manifest.json for agent setup, then use the connected MCP or download its client. Upload the local file before processing and download the result to the requesting computer within five minutes of completion. See [MCP](references/mcp.md).
-- For questions about models, scale, Double, width or quality, see [desktop behavior](references/behavior.md). Use `--explain` or `explain_upscale` to report the plan for the actual image. Use the user's requested model and settings. Report the saved result and its dimensions.
+- For first-time connection, uploads, jobs and downloads, read [MCP workflow](references/mcp.md). Save the result on this device within five minutes of completion.
+- For terminal use or batch scripts, the [remote CLI](references/cli.md) handles transfer, polling and saving with `--server`.
+- For model choice, scale, width, Double or encoding, read [output behavior](references/behavior.md). Use `list_models` and `explain_upscale` for the actual installed model and image. Report the saved path and dimensions.

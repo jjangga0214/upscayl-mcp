@@ -1,6 +1,6 @@
 # Upscayl Desktop processing
 
-The reference is Upscayl Desktop v2.15.0. The wrapper runs the Mac's installed engine and discovers matching .param and .bin files. Set UPSCAYL_APP to an alternative application bundle; set UPSCAYL_MODELS_DIR on the host to add custom pairs. The app recognizes 2x/x2 and 3x/x3 in model names and otherwise assumes 4x. A misnamed custom model may fail dimension validation.
+The reference is Upscayl Desktop v2.15.0. The wrapper runs the Mac's installed engine and discovers matching .param and .bin files. The app recognizes 2x/x2 and 3x/x3 in model names and otherwise assumes 4x. A misnamed custom model may fail dimension validation.
 
 | Setting | What happens |
 |---|---|
@@ -11,8 +11,5 @@ The reference is Upscayl Desktop v2.15.0. The wrapper runs the Mac's installed e
 | Format / compression | PNG (default), JPG or WebP, compression 0–100 following the desktop control. PNG compression preserves pixels. Lossy formats trade file size and detail and JPEG cannot carry alpha. |
 | Tile / GPU | Tile 0 lets the engine choose, or specify at least 32. Smaller tiles may help GPU memory pressure. GPU IDs follow the native engine; leave unset to choose automatically. |
 | TTA | Uses test-time augmentation to combine transformed predictions. This increases processing time; in Double the final pass receives the setting. |
-| Overwrite | A regular single image reuses an existing decodable destination by default as in the desktop single-image handler. Use --overwrite to replace it. Existing results may reflect earlier settings. Original inputs are protected. |
-
-Folder processing visits supported files directly inside the selected folder and writes a separate output folder. The CLI stages each file individually so a completed file remains usable after an interruption. Batch and Double refresh generated output names, as in the app. For an explicit destination, use --overwrite to replace it. Progress, cancellation and result files are the CLI/MCP counterparts to desktop actions. Use the compare command or the MCP comparison URL for a before/after slider, lens and actual-pixel view. Desktop themes, notifications and personal settings stay with the app.
 
 Upstream references: [argument builder](https://github.com/upscayl/upscayl/blob/v2.15.0/electron/utils/get-arguments.ts), [Double](https://github.com/upscayl/upscayl/blob/v2.15.0/electron/commands/double-upscayl.ts), [model labels](https://github.com/upscayl/upscayl/blob/v2.15.0/renderer/locales/en.json).

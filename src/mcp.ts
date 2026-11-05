@@ -18,7 +18,7 @@ export async function handleMcp(req: Request, jobs: Jobs) {
     { name: "upscayl-mcp", version },
     {
       instructions:
-        "Read GET /manifest.json on this same host for setup, skill and downloads. Upload raw PNG/JPEG/WebP bytes via POST /files first. Tool inputs use the returned file_id. Poll get_job, then download its relative result URL on this host. Remote caches expire five minutes after completion (expires_at), even after reads. Save the result on the requesting computer.",
+        "Read GET /manifest.json on this same host for client setup and the skills.client download. Upload raw PNG/JPEG/WebP bytes via POST /files first. Tool inputs use the returned file_id. Poll get_job, then download its relative result URL on this host. Remote caches expire five minutes after completion (expires_at), even after reads. Save the result on the requesting computer.",
     },
   );
   const reply = (value: unknown) => ({

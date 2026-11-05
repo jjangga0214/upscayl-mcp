@@ -2,7 +2,18 @@
 
 맥에 설치된 [Upscayl Desktop](https://github.com/upscayl/upscayl)의 엔진과 모델을 CLI, Codex, OpenCode에서 사용합니다. 같은 집의 다른 PC에서는 맥의 LAN 주소로 이미지를 보내고 결과를 내려받습니다. 호스트는 macOS, 원격 CLI는 macOS·Windows·Linux를 지원합니다.
 
-## 설치와 첫 실행
+## Codex·OpenCode 스킬 선택
+
+| 사용하는 기기 | 스킬 | 역할 |
+|---|---|---|
+| 연결할 PC | `upscayl` | MCP로 사진을 보내고 이 PC에 저장합니다. 터미널·배치 스크립트에는 원격 CLI를 선택할 수 있습니다. |
+| Upscayl이 설치된 맥 | `upscayl-host` | 로컬 CLI로 직접 처리하고 LAN 서비스·로그인 자동 시작·HTTPS를 관리합니다. |
+
+다른 PC의 에이전트에는 호스트의 `IP:port`를 전달하세요. `/llms.txt`와 `/manifest.json`의 기본 스킬은 클라이언트용입니다. 기기별 ZIP은 각각 자체 참조 문서를 포함하며 Codex와 OpenCode가 함께 읽는 `~/.agents/skills/`에 설치합니다. CLI가 있으면 클라이언트는 `upscayl-mcp skill install`, 호스트 맥은 `upscayl-mcp skill install --role host`로 설치합니다. [클라이언트 스킬](skills/upscayl/SKILL.md) · [호스트 스킬](skills/upscayl-host/SKILL.md)
+
+기존 통합 스킬을 사용한 PC에서 기본 설치 명령을 실행하면 공식 배포 파일을 클라이언트용으로 갱신합니다. 수정한 파일이 있으면 검토할 경로를 알려줍니다. 호스트 설치 명령은 별도 폴더에 설치하므로 두 역할을 함께 둘 수도 있습니다. 기존 통합판을 사용한 맥에서 호스트 역할만 쓰려면 새 스킬 설치 후 이전 `upscayl` 폴더를 글로벌 스킬 경로 밖에 보관하세요.
+
+## 호스트 CLI 설치와 첫 실행
 
 [GitHub Releases](https://github.com/jjangga0214/upscayl-mcp/releases)에서 운영체제와 CPU에 맞는 ZIP을 받아 압축을 풉니다. 실행 파일을 PATH에 넣으면 아래 명령을 그대로 쓸 수 있습니다. 릴리스의 SHA256SUMS로 압축 파일을 검증할 수 있습니다. 소스에서 실행하려면 Bun으로 `bun install --frozen-lockfile` 후 `bun src/cli.ts --help`를 실행합니다.
 
@@ -56,7 +67,7 @@ upscayl-mcp upscale "photo.png" --server http://HOST:8765 --output "big.png"
 upscayl-mcp skill install
 ```
 
-OpenCode는 기존 설정의 mcp 아래에 `{"upscayl":{"type":"remote","url":"http://HOST:8765/mcp","enabled":true,"oauth":false}}`를 병합합니다. 글로벌 스킬은 `~/.agents/skills/upscayl` 한 곳에 설치합니다. [MCP 연결과 작업 흐름](skills/upscayl/references/mcp.md) · [CLI 사용법](skills/upscayl/references/cli.md)
+OpenCode는 기존 설정의 mcp 아래에 `{"upscayl":{"type":"remote","url":"http://HOST:8765/mcp","enabled":true,"oauth":false}}`를 병합합니다. 클라이언트 스킬 위치는 `~/.agents/skills/upscayl`입니다. [MCP 연결과 작업 흐름](skills/upscayl/references/mcp.md) · [CLI 사용법](skills/upscayl/references/cli.md)
 
 ## 개발과 검증
 
@@ -67,7 +78,7 @@ bun test
 bun run release:build
 ```
 
-맥에 기본 모델이 설치되어 있으면 테스트가 실제 GPU로 실행됩니다. 앱과 같은 인자로 생성한 PNG/JPEG/WebP와 래퍼의 결과 바이트를 비교하고, SDK 클라이언트에서 서버에 연결해 파일 업로드부터 결과 다운로드까지 확인합니다. `release:build`는 Bun과 zip을 사용해 dist에 각 플랫폼의 ZIP, 스킬 ZIP, SHA256SUMS를 생성합니다.
+맥에 기본 모델이 설치되어 있으면 테스트가 실제 GPU로 실행됩니다. 앱과 같은 인자로 생성한 PNG/JPEG/WebP와 래퍼의 결과 바이트를 비교하고, SDK 클라이언트에서 서버에 연결해 파일 업로드부터 결과 다운로드까지 확인합니다. `release:build`는 Bun과 zip을 사용해 dist에 각 플랫폼의 ZIP, 역할별 스킬 ZIP 두 개, SHA256SUMS를 생성합니다.
 
 이 저장소는 독립적인 통합 도구입니다. Upscayl 본체와 모델은 호스트의 앱 설치본에서 사용하며 각각의 원래 라이선스를 따릅니다. [공식 엔진](https://github.com/upscayl/upscayl-ncnn) · [공식 앱 인자 구성](https://github.com/upscayl/upscayl/blob/v2.15.0/electron/utils/get-arguments.ts)
 

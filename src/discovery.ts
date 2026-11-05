@@ -44,9 +44,14 @@ export function agentGuide(m: ReturnType<typeof manifest>) {
     JSON.stringify(m.opencode, null, 2),
     "```",
     "",
-    "## Downloads",
-    "Skill ZIP: " + m.skill,
-    "Skill SHA-256: " + m.skill_sha256,
+    "## Client skill (Codex and OpenCode)",
+    "Skill ZIP: " + m.skills.client.url,
+    "Skill SHA-256: " + m.skills.client.sha256,
+    "",
+    "## Optional remote CLI for shell workflows",
+    "Example: upscayl-mcp upscale photo.png --server " +
+      new URL(m.mcp).origin +
+      " --output result.png",
     ...Object.entries(m.downloads).map(
       ([platform, url]) => "- " + platform + ": " + url,
     ),

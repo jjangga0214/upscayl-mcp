@@ -16,7 +16,7 @@ import {
 } from "./engine";
 import { describeModel } from "./catalog";
 import { endpoint, remoteFile, remoteModels } from "./client";
-import { installSkill } from "./assets";
+import { installSkill } from "./skills";
 import { listenAddress, portNumber } from "./network";
 import { service } from "./service";
 import { compareLocal } from "./compare";
@@ -221,16 +221,28 @@ const cli = defineCommand({
     skill: defineCommand({
       meta: {
         name: "skill",
-        description: "Install the global Codex/OpenCode skill",
+        description:
+          "Install role-specific global skills for Codex and OpenCode",
       },
       subCommands: {
         install: defineCommand({
           meta: {
             name: "install",
-            description: "Install into ~/.agents/skills/upscayl",
+            description:
+              "Install the client (default) or host skill into ~/.agents/skills",
           },
-          async run() {
-            console.log(await installSkill());
+          args: {
+            role: {
+              type: "string",
+              default: "client",
+              description:
+                "client (remote MCP or CLI) or host (Mac CLI and operations)",
+            },
+          },
+          async run({ args }) {
+            if (args.role !== "client" && args.role !== "host")
+              throw Error("Choose --role client or --role host.");
+            console.log(await installSkill(args.role));
           },
         }),
       },

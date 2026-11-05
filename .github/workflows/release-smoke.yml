@@ -32,13 +32,13 @@ jobs:
           ASSET: ${{ matrix.asset }}
           REPO: ${{ github.repository }}
         shell: bash
-        run: gh release download "$TAG" -R "$REPO" -p "upscayl-mcp-$ASSET.zip" -p SHA256SUMS
+        run: gh release download "$TAG" -R "$REPO" -p "upscayl-mcp-$ASSET.zip" -p "*-skill.zip" -p SHA256SUMS
       - name: Verify checksum, execute CLI and install skill
         shell: python
         run: |
           import hashlib, pathlib, subprocess, zipfile
           root = pathlib.Path.cwd()
-          archive, = root.glob("*.zip")
+          archive, = root.glob("upscayl-mcp-*.zip")
           sums = dict(line.split()[::-1] for line in pathlib.Path("SHA256SUMS").read_text().splitlines())
           assert hashlib.sha256(archive.read_bytes()).hexdigest() == sums[archive.name]
           with zipfile.ZipFile(archive) as z:
@@ -48,4 +48,13 @@ jobs:
           subprocess.run([exe, "--version"], check=True)
           subprocess.run([exe, "upscale", "--help"], check=True)
           subprocess.run([exe, "skill", "install"], check=True)
-          assert (pathlib.Path.home()/".agents/skills/upscayl/SKILL.md").is_file()
+          skills = pathlib.Path.home()/".agents/skills"
+          assert (skills/"upscayl/SKILL.md").is_file()
+          assert not (skills/"upscayl-host").exists()
+          subprocess.run([exe, "skill", "install", "--role", "host"], check=True)
+          for name in ["upscayl", "upscayl-host"]:
+              bundle = root/(name+"-skill.zip")
+              assert hashlib.sha256(bundle.read_bytes()).hexdigest() == sums[bundle.name]
+              with zipfile.ZipFile(bundle) as z:
+                  for path in z.namelist():
+                      assert (skills/path).read_bytes() == z.read(path)

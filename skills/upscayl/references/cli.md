@@ -1,24 +1,13 @@
-# CLI
+# Remote CLI
 
-Use `upscayl-mcp --help` or command-specific `--help`. On Windows the release executable ends in .exe. The host requires Upscayl Desktop on macOS. The remote CLI works without the app, GPU or Bun.
+For a shell workflow, download the client device's executable ZIP from the server manifest's `downloads` entry. The requesting device needs network access to the server. Use `upscayl-mcp.exe` on Windows.
 
-    upscayl-mcp compare "original.png" "result.png"
-    upscayl-mcp models
-    upscayl-mcp upscale "portrait.jpg" --format webp --scale 2
-    upscayl-mcp upscale "poster.png" --model digital-art-4x --width 2400 --explain
-    upscayl-mcp upscale "scan.png" --double --output "large.png"
-    upscayl-mcp upscale "./photos" --output-dir "./results" --format jpg
-    upscayl-mcp upscale "photo.png" --server http://HOST:8765 --output "result.png"
+    upscayl-mcp models --server http://HOST:PORT
+    upscayl-mcp upscale "photo.png" --server http://HOST:PORT --output "photo-2x.webp" --scale 2
+    upscayl-mcp upscale "./photos" --server http://HOST:PORT --output-dir "./results" --format jpg
 
-Supported inputs are PNG, JPEG (including .jpeg and .jfif), and WebP. --output selects the exact single-image path. Its extension selects the format unless --format is supplied, in which case both must agree. --output-dir chooses the parent for desktop-style names. Batch outputs go into a model/scale-specific child folder. --json prints machine-readable results. --explain describes processing without running the GPU; for a remote image it uploads the source to inspect it.
+Use the supplied server origin, including its scheme. A remote run uploads local PNG, JPEG or WebP data, waits for the host GPU and saves the result locally. The server schedules its copies for deletion five minutes after completion. A folder processes supported files directly inside it. `--explain` uploads the image to inspect its dimensions and returns the processing plan. `--json` gives script-friendly output.
 
-    upscayl-mcp server start
-    upscayl-mcp server status
-    upscayl-mcp server stop
-    upscayl-mcp server autostart on
-    upscayl-mcp server autostart off
-    upscayl-mcp server run --host 127.0.0.1 --port 8766
+For a single image, `--output` sets the local filename and its extension selects the format. For a folder, `--output-dir` selects the parent of the generated result folder. The original inputs are protected.
 
-On the Mac, start and stop control the current service. Autostart controls the next user login with launchd. The default host follows the primary private LAN IPv4 and the default port is 8765. Use --host and --port with start/autostart to configure them. Stop before changing a running service's address. During sleep the Mac is unavailable. No account or token is required on this trusted LAN.
-
-Install the shared skill with `upscayl-mcp skill install`, or extract the server's skill ZIP into your personal .agents/skills directory. The installed folder is upscayl/.
+A regular single-image run can reuse an existing decodable destination. Use `--overwrite` to replace it after changing settings. Batch and Double refresh generated output names. Each completed batch file remains available if the run is interrupted.

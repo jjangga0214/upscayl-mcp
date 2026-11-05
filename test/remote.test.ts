@@ -108,6 +108,15 @@ test.skipIf(!ready)(
               )
             ).headers.get("Content-Type"),
           ).toBe("image/webp");
+      expect(manifest.skills.client.url).toBe(manifest.skill);
+      expect(manifest.skills.client.sha256).toBe(manifest.skill_sha256);
+      const hostZip = await fetch(manifest.skills.host.url);
+      expect(hostZip.status).toBe(200);
+      expect(
+        new Bun.CryptoHasher("sha256")
+          .update(await hostZip.arrayBuffer())
+          .digest("hex"),
+      ).toBe(manifest.skills.host.sha256);
       const bytes = await (await fetch(manifest.skill)).arrayBuffer();
       expect(new Bun.CryptoHasher("sha256").update(bytes).digest("hex")).toBe(
         manifest.skill_sha256,

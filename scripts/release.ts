@@ -1,6 +1,7 @@
 import { mkdir, rm, readdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { packages, platforms, skillArchive, skillName } from "../src/assets";
+import { packages, platforms } from "../src/assets";
+import { skillBundles } from "../src/skills";
 const dist = resolve("dist");
 await mkdir(dist, { recursive: true });
 const bunLicense = await fetch(
@@ -64,9 +65,11 @@ for (const [i, platform] of platforms.entries()) {
     await Bun.write(join(dist, "upscayl-mcp"), Bun.file(exe));
   await rm(scratch, { recursive: true, force: true });
 }
-await Bun.write(join(dist, skillName), skillArchive());
+const bundles = Object.values(skillBundles);
+for (const bundle of bundles)
+  await Bun.write(join(dist, bundle.filename), bundle.zip);
 const sums = [];
-for (const name of [...packages, skillName]) {
+for (const name of [...packages, ...bundles.map((b) => b.filename)]) {
   const hash = new Bun.CryptoHasher("sha256");
   for await (const chunk of Bun.file(join(dist, name)).stream())
     hash.update(chunk);
