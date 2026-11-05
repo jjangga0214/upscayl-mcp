@@ -37,6 +37,7 @@ type Props = {
   busy: boolean;
   online: boolean;
   run: (options: Options) => void;
+  reveal: () => void;
   children: ReactNode;
 };
 export function Settings({
@@ -46,6 +47,7 @@ export function Settings({
   busy,
   online,
   run,
+  reveal,
   children,
 }: Props) {
   const [model, setModel] = useState("upscayl-standard-4x"),
@@ -62,8 +64,7 @@ export function Settings({
       className="settings"
       onInvalidCapture={(e) => {
         // A submit from the canvas must reveal any setting that needs correction.
-        const panel = e.currentTarget.closest<HTMLElement>("[popover]");
-        if (panel && !panel.matches(":popover-open")) panel.showPopover();
+        reveal();
         if (e.target instanceof HTMLInputElement) {
           const details = e.target.closest("details");
           if (details) details.open = true;

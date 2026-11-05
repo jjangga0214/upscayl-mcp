@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@heroui/react/button";
 import { Icon } from "./icons";
-import { Sidebar } from "./sidebar";
+import { Brand, Sidebar } from "./sidebar";
 import { Settings } from "./settings";
 import { RunActions, type RunState } from "./run-actions";
 import { Preview } from "./preview";
@@ -29,11 +29,14 @@ type Prompt = Event & {
 };
 function App() {
   const [compact, setCompact] = useState(compactLayout.matches);
-  const [panelOpen, setPanelOpen] = useState(false);
+  const panel = useRef<HTMLDialogElement>(null);
+  function openSettings() {
+    if (compact && panel.current && !panel.current.open)
+      panel.current.showModal();
+  }
   useEffect(() => {
     const resize = () => {
       setCompact(compactLayout.matches);
-      setPanelOpen(false);
     };
     compactLayout.addEventListener("change", resize);
     return () => compactLayout.removeEventListener("change", resize);
@@ -141,6 +144,7 @@ function App() {
   }
   async function run(options: Options) {
     if (active.current || !items.length || !connected) return;
+    if (panel.current?.matches(":modal")) panel.current.close();
     ++ticket.current;
     const controller = new AbortController();
     active.current = controller;
@@ -185,10 +189,16 @@ function App() {
       job.current = "";
     }
   }
-  const dockActions = compact && !panelOpen && items.length > 0;
+  const runLabel =
+    runState.kind === "done"
+      ? t("Upscale again")
+      : items.length > 1
+        ? t("Upscale {count} images", { count: items.length })
+        : t("Upscale");
   const runActions = (
     <RunActions
       state={runState}
+      runLabel={runLabel}
       inputKey={items[0]?.url}
       name={selected?.name}
       count={items.length}
@@ -239,7 +249,24 @@ function App() {
       <Sidebar
         version={root.dataset.desktopVersion}
         compact={compact}
-        onPanelToggle={setPanelOpen}
+        panelRef={panel}
+        sheetAction={
+          selected &&
+          !busy && (
+            <div className="sheet-action">
+              <Button
+                variant="primary"
+                type="submit"
+                form="upscale-settings"
+                fullWidth
+                isDisabled={!connected}
+              >
+                <Icon name="expand" />
+                {runLabel}
+              </Button>
+            </div>
+          )
+        }
         navigation={
           <nav className="sidebar-nav">
             <span className={"connection " + (connected ? "online" : "")}>
@@ -276,8 +303,9 @@ function App() {
           busy={busy}
           online={!!connected}
           run={run}
+          reveal={openSettings}
         >
-          {dockActions ? null : runActions}
+          {!compact && runActions}
         </Settings>
       </Sidebar>
       <main
@@ -438,8 +466,22 @@ function App() {
             {message}
           </div>
         </div>
-        {dockActions && (
-          <footer className="mobile-actions">{runActions}</footer>
+        {compact && (
+          <footer className="mobile-actions">
+            {!selected && <Brand version={root.dataset.desktopVersion} />}
+            <button
+              className="dock-settings"
+              type="button"
+              aria-haspopup="dialog"
+              aria-controls="settings-panel"
+              aria-label={t("Open settings")}
+              onClick={openSettings}
+            >
+              <Icon name="settings" />
+              {t("Settings")}
+            </button>
+            {selected && runActions}
+          </footer>
         )}
       </main>
     </div>

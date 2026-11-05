@@ -37,6 +37,7 @@ function Elapsed({ since }: { since: number }) {
 
 type Props = {
   state: RunState;
+  runLabel: string;
   inputKey?: string;
   name?: string;
   current: number;
@@ -47,6 +48,7 @@ type Props = {
 };
 export function RunActions({
   state,
+  runLabel,
   inputKey,
   name,
   current,
@@ -157,16 +159,8 @@ export function RunActions({
                 fullWidth
                 isDisabled={!count || !online}
               >
-                {state.kind === "done" ? (
-                  t("Upscale again")
-                ) : (
-                  <>
-                    <Icon name="expand" />
-                    {batch
-                      ? t("Upscale {count} images", { count })
-                      : t("Upscale")}
-                  </>
-                )}
+                {state.kind !== "done" && <Icon name="expand" />}
+                {runLabel}
               </Button>
               {ready && (
                 <span

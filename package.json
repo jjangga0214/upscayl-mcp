@@ -1,6 +1,6 @@
 {
   "name": "upscayl-mcp",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "private": true,
   "type": "module",
   "description": "Use the Upscayl desktop engine from a CLI or a home LAN MCP server",
